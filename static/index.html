@@ -1,0 +1,2192 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>City Walk 旅游助手</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --sand: #f5f0e8;
+            --terracotta: #c45d3e;
+            --forest: #2d4a3e;
+            --cream: #faf8f2;
+            --ink: #1a1a1a;
+            --muted: #8a8578;
+            --card-bg: rgba(255, 255, 255, 0.85);
+            --radius: 16px;
+            --shadow: 0 8px 32px rgba(45, 74, 62, 0.12);
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--sand);
+            color: var(--ink);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            right: -30%;
+            width: 80vw;
+            height: 80vw;
+            background: radial-gradient(circle, rgba(196,93,62,0.06) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .app-header {
+            position: relative;
+            z-index: 10;
+            padding: 24px 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            backdrop-filter: blur(12px);
+            background: rgba(245, 240, 232, 0.7);
+            border-bottom: 1px solid rgba(138, 133, 120, 0.15);
+        }
+
+        .logo {
+            font-family: 'Noto Serif SC', serif;
+            font-weight: 700;
+            font-size: 1.5rem;
+            color: var(--forest);
+            letter-spacing: -0.02em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: var(--terracotta);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+        }
+
+        .header-hint {
+            color: var(--muted);
+            font-size: 0.875rem;
+        }
+
+        .main-layout {
+            position: relative;
+            z-index: 5;
+            display: grid;
+            grid-template-columns: 1fr 420px;
+            height: calc(100vh - 81px);
+        }
+
+        .map-container {
+            position: relative;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        .map-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            background: var(--card-bg);
+            backdrop-filter: blur(16px);
+            border-radius: var(--radius);
+            padding: 16px 20px;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(255,255,255,0.6);
+        }
+
+        .map-search-shell {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 120;
+            width: min(380px, calc(100% - 40px));
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(16px);
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(255, 255, 255, 0.68);
+            overflow: hidden;
+        }
+
+        .map-search-bar {
+            display: grid;
+            grid-template-columns: 1fr auto auto;
+            gap: 8px;
+            padding: 12px;
+        }
+
+        .map-search-input {
+            width: 100%;
+            border: 1px solid rgba(138, 133, 120, 0.15);
+            border-radius: 12px;
+            padding: 11px 12px;
+            font-size: 0.85rem;
+            outline: none;
+            background: white;
+            color: var(--ink);
+            font-family: 'DM Sans', sans-serif;
+        }
+
+        .map-search-btn,
+        .map-nearby-btn,
+        .result-action {
+            border: none;
+            border-radius: 12px;
+            padding: 0 14px;
+            font-size: 0.8rem;
+            font-family: 'DM Sans', sans-serif;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .map-search-btn {
+            background: var(--terracotta);
+            color: white;
+        }
+
+        .map-nearby-btn {
+            background: rgba(45, 74, 62, 0.1);
+            color: var(--forest);
+        }
+
+        .map-search-btn:hover,
+        .map-nearby-btn:hover,
+        .result-action:hover {
+            transform: translateY(-1px);
+        }
+
+        .map-search-results {
+            border-top: 1px solid rgba(138, 133, 120, 0.12);
+            max-height: 320px;
+            overflow-y: auto;
+            display: none;
+        }
+
+        .map-search-results.show {
+            display: block;
+        }
+
+        .route-floating-card {
+            position: absolute;
+            right: 20px;
+            bottom: 20px;
+            z-index: 130;
+            width: min(360px, calc(100% - 40px));
+            overflow: clip;
+            background: rgba(255, 255, 255, 0.94);
+            backdrop-filter: blur(14px);
+            border-radius: 18px;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(255,255,255,0.65);
+            padding: 16px;
+            display: none;
+        }
+
+        .route-floating-card.show {
+            display: block;
+        }
+
+        /* ── Route card header layout ── */
+        .route-card-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .route-card-title {
+            font-family: 'Noto Serif SC', serif;
+            color: var(--forest);
+            font-size: 1rem;
+            font-weight: 600;
+            white-space: nowrap;
+            margin: 0;
+        }
+
+        /* 折叠态摘要行：展开时隐藏，折叠时显示 */
+        .route-card-summary {
+            min-width: 0;
+            display: none;
+            align-items: center;
+            gap: 6px;
+            flex: 1;
+            font-size: 0.8rem;
+            color: var(--muted);
+            overflow: hidden;
+        }
+
+        .route-floating-card.collapsed .route-card-summary {
+            display: flex;
+        }
+
+        .stat-chip-sm {
+            background: rgba(138,133,120,0.08);
+            border-radius: 6px;
+            padding: 2px 7px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--forest);
+            white-space: nowrap;
+        }
+
+        /* 折叠/展开按钮 */
+        .route-card-toggle {
+            transform: rotate(0deg);
+            margin-left: auto;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 2px 4px;
+            color: var(--muted);
+            transition: transform 0.3s ease, color 0.2s ease;
+            line-height: 1;
+            flex-shrink: 0;
+        }
+
+        .route-card-toggle:hover {
+            color: var(--forest);
+        }
+
+        .route-floating-card.collapsed .route-card-toggle {
+            transform: rotate(180deg);
+        }
+
+        .route-floating-card.collapsed .route-card-header {
+            margin-bottom: 0;
+        }
+
+        /* card-body 展开/折叠动画 */
+        .route-card-body {
+            max-height: min(38vh, 300px);
+            overflow: hidden;
+            transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                        opacity     0.25s ease;
+            opacity: 1;
+        }
+
+        .route-floating-card.collapsed .route-card-body {
+            max-height: 0;
+            opacity: 0;
+        }
+
+        /* Restore scroll when expanded — overflow: hidden is only needed during animation */
+        .route-floating-card:not(.collapsed) .route-card-body {
+            overflow-y: auto;
+        }
+
+        /* 拖拽把手（仅移动端） */
+        .route-card-drag-handle {
+            display: none;
+            width: 36px;
+            height: 4px;
+            background: rgba(0,0,0,0.12);
+            border-radius: 2px;
+            margin: 10px auto 0;
+            cursor: grab;
+        }
+
+        .route-card-drag-handle:active {
+            cursor: grabbing;
+        }
+
+        @media (max-width: 900px) {
+            .route-card-drag-handle {
+                display: block;
+            }
+        }
+
+
+        .search-result-item {
+            padding: 12px;
+            border-bottom: 1px solid rgba(138, 133, 120, 0.08);
+            background: rgba(255, 255, 255, 0.92);
+        }
+
+        .search-result-title {
+            font-weight: 600;
+            color: var(--forest);
+            font-size: 0.85rem;
+            margin-bottom: 4px;
+        }
+
+        .search-result-meta {
+            color: var(--muted);
+            font-size: 0.76rem;
+            line-height: 1.5;
+        }
+
+        .search-result-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .result-action {
+            height: 30px;
+            background: rgba(196, 93, 62, 0.08);
+            color: var(--terracotta);
+        }
+
+        .result-action.secondary {
+            background: rgba(45, 74, 62, 0.08);
+            color: var(--forest);
+        }
+
+        .map-overlay h3 {
+            font-family: 'Noto Serif SC', serif;
+            font-size: 0.9rem;
+            color: var(--forest);
+            margin-bottom: 8px;
+        }
+
+        .step-list {
+            list-style: none;
+            font-size: 0.85rem;
+            color: var(--muted);
+        }
+
+        .step-list li {
+            padding: 3px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .step-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .step-dot.start { background: var(--terracotta); }
+        .step-dot.end { background: var(--forest); }
+
+        .sidebar {
+            background: var(--cream);
+            border-left: 1px solid rgba(138, 133, 120, 0.15);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .sidebar-header {
+            padding: 28px 28px 20px;
+            border-bottom: 1px solid rgba(138, 133, 120, 0.12);
+        }
+
+        .sidebar-header h2 {
+            font-family: 'Noto Serif SC', serif;
+            font-size: 1.35rem;
+            color: var(--forest);
+            margin-bottom: 4px;
+        }
+
+        .sidebar-header p {
+            font-size: 0.85rem;
+            color: var(--muted);
+        }
+
+        .coord-cards {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding: 20px 28px;
+        }
+
+        .coord-card {
+            background: white;
+            border-radius: 12px;
+            padding: 14px 16px;
+            border: 1px solid rgba(138, 133, 120, 0.1);
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .coord-card.has-value {
+            border-color: rgba(196, 93, 62, 0.3);
+            box-shadow: 0 2px 12px rgba(196, 93, 62, 0.08);
+        }
+
+        .coord-card label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--muted);
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .coord-card label .clear-btn {
+            margin-left: auto;
+            width: 16px;
+            height: 16px;
+            border: none;
+            background: none;
+            color: var(--muted);
+            cursor: pointer;
+            font-size: 14px;
+            line-height: 1;
+            padding: 0;
+            border-radius: 50%;
+            display: none;
+            transition: all 0.2s;
+        }
+
+        .coord-card.has-value label .clear-btn {
+            display: block;
+        }
+
+        .coord-card label .clear-btn:hover {
+            color: var(--terracotta);
+            background: rgba(196, 93, 62, 0.08);
+        }
+
+        .coord-card .search-input {
+            width: 100%;
+            border: none;
+            outline: none;
+            font-size: 0.85rem;
+            color: var(--ink);
+            margin-top: 6px;
+            font-family: 'DM Sans', sans-serif;
+            background: transparent;
+            padding: 0;
+        }
+
+        .coord-card .search-input::placeholder {
+            color: var(--muted);
+            opacity: 0.5;
+        }
+
+        .coord-card .search-hint {
+            font-size: 0.7rem;
+            color: var(--muted);
+            opacity: 0;
+            margin-top: 4px;
+            transition: opacity 0.2s;
+        }
+
+        .coord-card.has-value .search-hint {
+            opacity: 0.6;
+        }
+
+        .autocomplete-panel {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            z-index: 200;
+            background: white;
+            border-radius: 0 0 12px 12px;
+            box-shadow: 0 12px 32px rgba(0,0,0,0.12);
+            max-height: 200px;
+            overflow-y: auto;
+            display: none;
+            border: 1px solid rgba(138, 133, 120, 0.15);
+            border-top: none;
+        }
+
+        .autocomplete-panel.show {
+            display: block;
+        }
+
+        .autocomplete-panel .ac-item {
+            padding: 10px 16px;
+            font-size: 0.82rem;
+            cursor: pointer;
+            transition: background 0.15s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--ink);
+        }
+
+        .autocomplete-panel .ac-item:hover {
+            background: rgba(196, 93, 62, 0.06);
+        }
+
+        .autocomplete-panel .ac-item .ac-name {
+            font-weight: 500;
+        }
+
+        .autocomplete-panel .ac-item .ac-district {
+            font-size: 0.72rem;
+            color: var(--muted);
+        }
+
+        .geolocation-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            margin: 0 28px;
+            padding: 10px;
+            background: rgba(45, 74, 62, 0.06);
+            border: 1px dashed rgba(45, 74, 62, 0.25);
+            border-radius: 10px;
+            color: var(--forest);
+            font-size: 0.82rem;
+            font-family: 'DM Sans', sans-serif;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .geolocation-btn:hover {
+            background: rgba(45, 74, 62, 0.1);
+            border-color: rgba(45, 74, 62, 0.4);
+        }
+
+        .geolocation-btn.locating {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .location-status {
+            margin: 10px 28px 0;
+            padding: 10px 12px;
+            border-radius: 10px;
+            font-size: 0.78rem;
+            color: var(--forest);
+            background: rgba(45, 74, 62, 0.06);
+            border: 1px solid rgba(45, 74, 62, 0.1);
+            line-height: 1.5;
+        }
+
+        .location-status.muted {
+            color: var(--muted);
+            background: rgba(138, 133, 120, 0.08);
+            border-color: rgba(138, 133, 120, 0.12);
+        }
+
+        .location-status strong {
+            color: var(--terracotta);
+        }
+
+        .mode-switcher {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin: 14px 28px 0;
+        }
+
+        .mode-btn {
+            border: 1px solid rgba(138, 133, 120, 0.16);
+            background: white;
+            color: var(--muted);
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-size: 0.82rem;
+            font-family: 'DM Sans', sans-serif;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .mode-btn.active {
+            background: var(--forest);
+            color: white;
+            border-color: var(--forest);
+            box-shadow: 0 6px 18px rgba(45, 74, 62, 0.18);
+        }
+
+        .mode-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 14px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: rgba(196, 93, 62, 0.1);
+            color: var(--terracotta);
+            font-size: 0.76rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+        }
+
+        .transit-summary {
+            margin-bottom: 14px;
+            padding: 10px 12px;
+            border-radius: 12px;
+            background: rgba(45, 74, 62, 0.08);
+            color: var(--forest);
+            font-size: 0.78rem;
+            line-height: 1.5;
+        }
+
+        .transit-steps {
+            background: white;
+            border-radius: 14px;
+            padding: 16px 18px;
+            border: 1px solid rgba(138, 133, 120, 0.08);
+            margin-bottom: 16px;
+        }
+
+        .transit-steps h4 {
+            margin: 0 0 10px;
+            color: var(--forest);
+            font-size: 0.88rem;
+            font-family: 'Noto Serif SC', serif;
+        }
+
+        .transit-steps ol {
+            margin: 0;
+            padding-left: 18px;
+            color: #374151;
+            font-size: 0.84rem;
+            line-height: 1.7;
+        }
+
+        .transit-steps li + li {
+            margin-top: 6px;
+        }
+
+        .plan-btn {
+            margin: 0 28px;
+            padding: 14px 24px;
+            background: var(--terracotta);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            letter-spacing: 0.02em;
+        }
+
+        .plan-btn:hover:not(:disabled) {
+            background: #b04e32;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(196, 93, 62, 0.3);
+        }
+
+        .plan-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .plan-btn.loading {
+            background: var(--muted);
+        }
+
+        .result-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px 28px;
+        }
+
+        .result-area::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .result-area::-webkit-scrollbar-thumb {
+            background: rgba(138, 133, 120, 0.2);
+            border-radius: 4px;
+        }
+
+        .weather-card {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 16px;
+            background: linear-gradient(135deg, rgba(45, 74, 62, 0.96), rgba(77, 104, 91, 0.92));
+            color: white;
+            border-radius: 14px;
+            padding: 14px 16px;
+            box-shadow: 0 10px 24px rgba(45, 74, 62, 0.18);
+        }
+
+        .weather-main {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .weather-city {
+            font-size: 0.78rem;
+            opacity: 0.72;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+
+        .weather-status {
+            font-family: 'Noto Serif SC', serif;
+            font-size: 1rem;
+        }
+
+        .weather-meta {
+            font-size: 0.78rem;
+            opacity: 0.82;
+        }
+
+        .weather-temp {
+            font-size: 1.9rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .route-stats {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .stat-chip {
+            background: white;
+            border-radius: 10px;
+            padding: 12px 16px;
+            flex: 1;
+            text-align: center;
+            border: 1px solid rgba(138, 133, 120, 0.08);
+        }
+
+        .stat-chip .num {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--forest);
+        }
+
+        .stat-chip .unit {
+            font-size: 0.75rem;
+            color: var(--muted);
+            margin-top: 2px;
+        }
+
+        .guide-content {
+            background: white;
+            border-radius: 14px;
+            padding: 24px;
+            border: 1px solid rgba(138, 133, 120, 0.08);
+            line-height: 1.75;
+            font-size: 0.9rem;
+        }
+
+        .guide-content h2 {
+            font-family: 'Noto Serif SC', serif;
+            color: var(--forest);
+            margin: 20px 0 10px;
+            font-size: 1.05rem;
+        }
+
+        .guide-content h2:first-child {
+            margin-top: 0;
+        }
+
+        .guide-content h3 {
+            font-family: 'Noto Serif SC', serif;
+            color: var(--terracotta);
+            margin: 16px 0 8px;
+            font-size: 0.95rem;
+        }
+
+        .guide-content ul {
+            padding-left: 18px;
+            margin: 8px 0;
+        }
+
+        .guide-content li {
+            margin: 4px 0;
+            color: #3a3a3a;
+        }
+
+        .guide-content p {
+            margin: 6px 0;
+            color: #3a3a3a;
+        }
+
+        .guide-content strong {
+            color: var(--forest);
+        }
+
+        .result-summary {
+            background: white;
+            border-radius: 14px;
+            padding: 18px;
+            border: 1px solid rgba(138, 133, 120, 0.08);
+            margin-top: 16px;
+        }
+
+        .result-summary p {
+            color: #4b5563;
+            font-size: 0.85rem;
+            line-height: 1.7;
+        }
+
+        .open-guide-btn {
+            margin-top: 14px;
+            width: 100%;
+            border: none;
+            border-radius: 12px;
+            padding: 12px 14px;
+            background: var(--forest);
+            color: white;
+            font-size: 0.86rem;
+            font-family: 'DM Sans', sans-serif;
+            cursor: pointer;
+        }
+
+        .guide-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(16, 24, 40, 0.44);
+            backdrop-filter: blur(8px);
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        .guide-modal.show {
+            display: flex;
+        }
+
+        .guide-modal-panel {
+            width: min(920px, 100%);
+            max-height: min(86vh, 920px);
+            background: var(--cream);
+            border-radius: 24px;
+            box-shadow: 0 24px 80px rgba(0, 0, 0, 0.22);
+            border: 1px solid rgba(255, 255, 255, 0.68);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .guide-modal-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 22px 24px 18px;
+            border-bottom: 1px solid rgba(138, 133, 120, 0.12);
+            background: rgba(255, 255, 255, 0.78);
+        }
+
+        .guide-modal-title {
+            font-family: 'Noto Serif SC', serif;
+            color: var(--forest);
+            font-size: 1.35rem;
+            margin-bottom: 6px;
+        }
+
+        .guide-modal-meta {
+            color: var(--muted);
+            font-size: 0.8rem;
+            line-height: 1.6;
+        }
+
+        .guide-modal-close {
+            border: none;
+            background: rgba(45, 74, 62, 0.08);
+            color: var(--forest);
+            width: 38px;
+            height: 38px;
+            border-radius: 999px;
+            font-size: 20px;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .guide-modal-body {
+            overflow-y: auto;
+            padding: 24px;
+        }
+
+        .waypoint-section {
+            margin: 14px 28px 0;
+            padding: 14px 16px;
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(138, 133, 120, 0.1);
+        }
+
+        .waypoint-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .waypoint-header h3 {
+            margin: 0;
+            font-size: 0.9rem;
+            color: var(--forest);
+            font-family: 'Noto Serif SC', serif;
+        }
+
+        .waypoint-clear {
+            border: none;
+            background: rgba(196, 93, 62, 0.08);
+            color: var(--terracotta);
+            border-radius: 10px;
+            padding: 6px 10px;
+            font-size: 0.75rem;
+            cursor: pointer;
+        }
+
+        .waypoint-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .waypoint-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 10px 12px;
+            background: white;
+            border-radius: 12px;
+            border: 1px solid rgba(138, 133, 120, 0.08);
+        }
+
+        .waypoint-badge {
+            min-width: 24px;
+            height: 24px;
+            border-radius: 999px;
+            background: rgba(45, 74, 62, 0.12);
+            color: var(--forest);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.72rem;
+            font-weight: 700;
+        }
+
+        .waypoint-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .waypoint-name {
+            font-size: 0.82rem;
+            color: var(--ink);
+            line-height: 1.5;
+        }
+
+        .waypoint-meta {
+            font-size: 0.72rem;
+            color: var(--muted);
+            margin-top: 4px;
+        }
+
+        .waypoint-remove {
+            border: none;
+            background: none;
+            color: var(--muted);
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .point-analysis {
+            margin-top: 16px;
+            padding: 16px 18px;
+            border-radius: 14px;
+            background: white;
+            border: 1px solid rgba(138, 133, 120, 0.08);
+        }
+
+        .point-analysis h3 {
+            margin: 0 0 8px;
+            color: var(--forest);
+            font-family: 'Noto Serif SC', serif;
+            font-size: 0.98rem;
+        }
+
+        .point-analysis p {
+            color: #374151;
+            font-size: 0.84rem;
+            line-height: 1.75;
+        }
+
+        .landmark-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .landmark-tag {
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: rgba(45, 74, 62, 0.08);
+            color: var(--forest);
+            font-size: 0.74rem;
+        }
+
+        .marker-preview,
+        .marker-analysis {
+            max-width: 280px;
+            color: #1f2937;
+            line-height: 1.6;
+        }
+
+        .marker-preview-title,
+        .marker-analysis-title {
+            font-weight: 700;
+            color: var(--forest);
+            margin-bottom: 6px;
+        }
+
+        .marker-preview-meta,
+        .marker-analysis-meta {
+            color: var(--muted);
+            font-size: 0.76rem;
+        }
+
+        .marker-analysis p {
+            margin: 8px 0 0;
+            font-size: 0.82rem;
+        }
+
+        .marker-action-row {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 12px;
+        }
+
+        .marker-delete-btn {
+            border: none;
+            border-radius: 10px;
+            padding: 8px 12px;
+            background: rgba(196, 93, 62, 0.1);
+            color: var(--terracotta);
+            font-size: 0.78rem;
+            cursor: pointer;
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--muted);
+            text-align: center;
+            padding: 40px;
+        }
+
+        .empty-state .icon {
+            font-size: 3rem;
+            margin-bottom: 16px;
+            opacity: 0.3;
+        }
+
+        .empty-state p {
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--forest);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            z-index: 9999;
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .error-banner {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 10px;
+            padding: 14px 18px;
+            color: #991b1b;
+            font-size: 0.85rem;
+            margin-bottom: 16px;
+        }
+
+        @media (max-width: 900px) {
+            .main-layout {
+                grid-template-columns: 1fr;
+                grid-template-rows: 50vh 1fr;
+                height: auto;
+                min-height: calc(100vh - 81px);
+            }
+
+            .sidebar {
+                border-left: none;
+                border-top: 1px solid rgba(138, 133, 120, 0.15);
+            }
+
+            .map-overlay {
+                top: 12px;
+                left: 12px;
+                padding: 12px 14px;
+            }
+
+            .guide-modal {
+                padding: 0;
+                align-items: flex-end;
+            }
+
+            .guide-modal-panel {
+                width: 100%;
+                max-height: 92vh;
+                border-radius: 24px 24px 0 0;
+            }
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .animate-in {
+            animation: fadeInUp 0.5s ease forwards;
+        }
+    </style>
+</head>
+<body>
+
+<header class="app-header">
+    <div class="logo">
+        <div class="logo-icon">W</div>
+        City Walk 助手
+    </div>
+    <span class="header-hint">点击地图设置起点、终点和途经点</span>
+</header>
+
+<div class="main-layout">
+    <div class="map-container">
+        <div id="map"></div>
+        <div class="map-overlay">
+            <h3>使用说明</h3>
+            <ul class="step-list">
+                <li><span class="step-dot start"></span> 第一次点击设为起点</li>
+                <li><span class="step-dot end"></span> 第二次点击设为终点</li>
+                <li>后续点击继续追加途经点</li>
+                <li>点击任意点位可触发 AI 分析</li>
+            </ul>
+        </div>
+        <div class="map-search-shell">
+            <div class="map-search-bar">
+                <input class="map-search-input" id="mapSearchInput" placeholder="搜索地图上的地点，如：咖啡馆、景点、商场">
+                <button class="map-search-btn" id="mapSearchBtn" type="button">搜索</button>
+                <button class="map-nearby-btn" id="nearbySearchBtn" type="button">搜附近</button>
+            </div>
+            <div class="map-search-results" id="mapSearchResults"></div>
+        </div>
+        <div class="route-floating-card" id="routeFloatingCard">
+            <div class="route-card-header">
+                <span class="route-card-title">路线摘要</span>
+                <div class="route-card-summary" id="routeCardSummary" aria-live="polite"></div>
+                <button type="button" class="route-card-toggle" id="routeCardToggle" aria-expanded="true" aria-label="路线卡折叠控制">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                        <path d="M3 5.5L8 10.5L13 5.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="route-card-body" id="routeCardBody"></div>
+            <div class="route-card-drag-handle" id="routeCardDragHandle"></div>
+        </div>
+    </div>
+
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h2>路线规划</h2>
+            <p>点击地图构建起点、途经点、终点，并生成交通路线图</p>
+        </div>
+
+        <div class="coord-cards">
+            <div class="coord-card" id="card-start">
+                <label>
+                    起点
+                    <button class="clear-btn" id="clear-start" type="button">×</button>
+                </label>
+                <input class="search-input" id="start-input" placeholder="搜索起点或点击地图选取" autocomplete="off">
+                <div class="search-hint" id="start-hint">尚未设置起点</div>
+                <div class="autocomplete-panel" id="start-panel"></div>
+            </div>
+            <div class="coord-card" id="card-end">
+                <label>
+                    终点
+                    <button class="clear-btn" id="clear-end" type="button">×</button>
+                </label>
+                <input class="search-input" id="end-input" placeholder="搜索终点或点击地图选取" autocomplete="off">
+                <div class="search-hint" id="end-hint">尚未设置终点</div>
+                <div class="autocomplete-panel" id="end-panel"></div>
+            </div>
+        </div>
+
+        <button class="geolocation-btn" id="locateBtn" type="button">定位我的位置</button>
+        <div class="location-status muted" id="locationStatus">尚未定位，默认显示地图中心</div>
+
+        <div class="mode-switcher">
+            <button class="mode-btn active" data-mode="walking" type="button">步行</button>
+            <button class="mode-btn" data-mode="transit" type="button">公交地铁</button>
+        </div>
+
+        <div class="waypoint-section">
+            <div class="waypoint-header">
+                <h3>途经点</h3>
+                <button class="waypoint-clear" id="clearWaypointsBtn" type="button">清空途经点</button>
+            </div>
+            <div class="waypoint-list" id="waypointList">
+                <div class="waypoint-meta">第三次点击地图后，会按顺序加入途经点。</div>
+            </div>
+        </div>
+
+        <div class="result-area" id="resultArea">
+            <div class="empty-state">
+                <div class="icon">🗺️</div>
+                <p>点位变化后会自动生成路线图；路线摘要会显示在地图浮层中。</p>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+    window._AMapSecurityConfig = {
+        securityJsCode: '5693981707d9c610301a59a62fdc2f62',
+    };
+</script>
+<script src="https://webapi.amap.com/maps?v=2.0&key=aff0023538e35f09871462f5ec200af5&plugin=AMap.Walking,AMap.AutoComplete,AMap.PlaceSearch,AMap.Geocoder,AMap.Geolocation,AMap.Weather"></script>
+<script>
+
+    let map, startMarker, endMarker, routeLine, geolocationControl, infoWindow;
+    let startCoord = null, endCoord = null;
+    let waypointCoords = [];
+    let waypointMarkers = [];
+    let currentMode = 'walking';
+    let searchMarkers = [];
+    let pointAnalysisCache = {};
+    let hoverPreviewTimer = null;
+    const searchState = {
+        start: { timer: null, requestId: 0, selectedName: '' },
+        end: { timer: null, requestId: 0, selectedName: '' },
+    };
+
+    function initMap() {
+        map = new AMap.Map('map', {
+            zoom: 14,
+            center: [116.397428, 39.90923],
+            mapStyle: 'amap://styles/whitesmoke',
+        });
+
+        map.on('click', onMapClick);
+        bindEvents();
+        bootstrapLocation();
+    }
+
+    function bindEvents() {
+        const startInput = document.getElementById('start-input');
+        const endInput = document.getElementById('end-input');
+        const locateBtn = document.getElementById('locateBtn');
+        const modeButtons = document.querySelectorAll('.mode-btn');
+        const mapSearchBtn = document.getElementById('mapSearchBtn');
+        const nearbySearchBtn = document.getElementById('nearbySearchBtn');
+        const mapSearchInput = document.getElementById('mapSearchInput');
+        startInput.addEventListener('input', () => handleSearchInput('start'));
+        endInput.addEventListener('input', () => handleSearchInput('end'));
+        document.getElementById('clear-start').addEventListener('click', () => clearPoint('start'));
+        document.getElementById('clear-end').addEventListener('click', () => clearPoint('end'));
+        document.getElementById('clearWaypointsBtn').addEventListener('click', clearWaypoints);
+        locateBtn.addEventListener('click', () => bootstrapLocation(true));
+        document.addEventListener('click', onDocumentClick);
+        mapSearchBtn.addEventListener('click', () => searchMapPlaces(false));
+        nearbySearchBtn.addEventListener('click', () => searchMapPlaces(true));
+        mapSearchInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') searchMapPlaces(false);
+        });
+        modeButtons.forEach((button) => {
+            button.addEventListener('click', () => setMode(button.dataset.mode || 'walking'));
+        });
+
+        // 折叠按钮点击
+        const _toggleBtn = document.getElementById('routeCardToggle');
+        if (_toggleBtn) _toggleBtn.addEventListener('click', toggleRouteCard);
+
+        // 移动端拖拽把手
+        (function () {
+            let dragStartY = 0;
+            const handle = document.getElementById('routeCardDragHandle');
+            if (!handle) return;
+            handle.addEventListener('touchstart', function (e) {
+                dragStartY = e.touches[0].clientY;
+            }, { passive: true });
+            handle.addEventListener('touchend', function (e) {
+                const dy = e.changedTouches[0].clientY - dragStartY;
+                if (dy > 30 && !routeCardCollapsed) toggleRouteCard();   // 下划 → 折叠
+                if (dy < -30 && routeCardCollapsed)  toggleRouteCard();  // 上划 → 展开
+            }, { passive: true });
+        }());
+    }
+
+    function getPointCacheKey(point) {
+        return `${point.lng.toFixed(6)},${point.lat.toFixed(6)}`;
+    }
+
+    function renderMarkerPreview(point, label) {
+        const cacheKey = getPointCacheKey(point);
+        const cached = pointAnalysisCache[cacheKey];
+        const summary = cached
+            ? escapeHtml(String(cached.analysis || '').replace(/\n+/g, ' ').slice(0, 60) || '已缓存分析结果')
+            : '点击查看该点位 AI 景点分析';
+        return `
+            <div class="marker-preview">
+                <div class="marker-preview-title">${escapeHtml(point.name || label || '点位')}</div>
+                <div class="marker-preview-meta">${cached ? '已缓存分析 · ' : ''}${escapeHtml(summary)}${cached && String(cached.analysis || '').length > 60 ? '...' : ''}</div>
+            </div>
+        `;
+    }
+
+    function markMarkerAnalyzed(marker) {
+        const currentLabel = marker.getLabel && marker.getLabel();
+        const content = currentLabel && currentLabel.content ? String(currentLabel.content).replace('★', '') : '';
+        if (marker.setLabel) {
+            marker.setLabel({ content: `${content}★`, direction: 'top' });
+        }
+    }
+
+    function renderMarkerAnalysis(data, cacheKey) {
+        const tags = (data.nearby_landmarks || []).map((name) => `<span class="landmark-tag">${escapeHtml(name)}</span>`).join('');
+        return `
+            <div class="marker-analysis">
+                <div class="marker-analysis-title">${escapeHtml(data.name || data.label || '点位分析')}</div>
+                <div class="marker-analysis-meta">${escapeHtml(data.label || '点位景点分析')}</div>
+                <p>${escapeHtml(data.analysis || '暂无分析结果。').replace(/\n/g, '<br>')}</p>
+                ${tags ? `<div class="landmark-tags">${tags}</div>` : ''}
+                <div class="marker-action-row">
+                    <button class="marker-delete-btn" data-delete-cache-key="${escapeHtml(cacheKey)}" type="button">删除该点</button>
+                </div>
+            </div>
+        `;
+    }
+
+    function clearRouteLine() {
+        if (routeLine) {
+            routeLine.setMap(null);
+            routeLine = null;
+        }
+    }
+
+    function deletePointByCacheKey(cacheKey) {
+        delete pointAnalysisCache[cacheKey];
+        if (startCoord && getPointCacheKey(startCoord) === cacheKey) {
+            clearPoint('start');
+        } else if (endCoord && getPointCacheKey(endCoord) === cacheKey) {
+            clearPoint('end');
+        } else {
+            const waypointIndex = waypointCoords.findIndex((point) => getPointCacheKey(point) === cacheKey);
+            if (waypointIndex >= 0) {
+                removeWaypoint(waypointIndex);
+            }
+        }
+        clearRouteLine();
+        if (infoWindow) {
+            infoWindow.close();
+        }
+        showToast('已删除该点');
+    }
+
+    function bindInfoWindowActions(cacheKey) {
+        const button = document.querySelector(`[data-delete-cache-key="${CSS.escape(cacheKey)}"]`);
+        if (button) {
+            button.addEventListener('click', () => deletePointByCacheKey(cacheKey));
+        }
+    }
+
+    function setMode(mode) {
+        currentMode = mode;
+        document.querySelectorAll('.mode-btn').forEach((button) => {
+            button.classList.toggle('active', button.dataset.mode === mode);
+        });
+        triggerRouteRefresh();
+    }
+
+    function onDocumentClick(event) {
+        const startCard = document.getElementById('card-start');
+        const endCard = document.getElementById('card-end');
+        const mapSearchShell = document.querySelector('.map-search-shell');
+        if (!startCard.contains(event.target)) hidePanel('start');
+        if (!endCard.contains(event.target)) hidePanel('end');
+        if (mapSearchShell && !mapSearchShell.contains(event.target)) {
+            const results = document.getElementById('mapSearchResults');
+            results.classList.remove('show');
+        }
+    }
+
+    async function searchMapPlaces(nearbyOnly) {
+        const input = document.getElementById('mapSearchInput');
+        const keyword = input.value.trim();
+        if (!keyword) {
+            showToast('请输入地点关键词');
+            return;
+        }
+
+        const center = map.getCenter();
+        const location = `${center.lng},${center.lat}`;
+        const radius = estimateNearbyRadius();
+        const query = nearbyOnly
+            ? `/api/search/nearby?keywords=${encodeURIComponent(keyword)}&location=${encodeURIComponent(location)}&radius=${radius}`
+            : `/api/search?keywords=${encodeURIComponent(keyword)}&location=${encodeURIComponent(location)}`;
+
+        try {
+            const resp = await fetch(query);
+            const list = await resp.json();
+            const results = Array.isArray(list) ? list.filter(item => item.location).slice(0, 8) : [];
+            renderMapSearchResults(results);
+            drawSearchMarkers(results);
+            if (results.length) {
+                const first = results[0];
+                const [lng, lat] = first.location.split(',').map(Number);
+                map.setCenter([lng, lat]);
+            } else {
+                showToast('没有找到相关地点');
+            }
+        } catch (err) {
+            showToast('地点搜索失败');
+        }
+    }
+
+    function estimateNearbyRadius() {
+        const zoom = map.getZoom();
+        if (zoom >= 16) return 500;
+        if (zoom >= 15) return 800;
+        if (zoom >= 14) return 1200;
+        if (zoom >= 13) return 1800;
+        return 2500;
+    }
+
+    function renderMapSearchResults(list) {
+        const container = document.getElementById('mapSearchResults');
+        if (!list.length) {
+            container.innerHTML = '<div class="search-result-item"><div class="search-result-meta">未找到匹配地点</div></div>';
+            container.classList.add('show');
+            return;
+        }
+
+        container.innerHTML = list.map((item, index) => {
+            const name = escapeHtml(item.name || '未知地点');
+            const meta = escapeHtml([item.address, item.type].filter(Boolean).join(' · ') || '暂无详细信息');
+            return `
+                <div class="search-result-item" data-index="${index}">
+                    <div class="search-result-title">${name}</div>
+                    <div class="search-result-meta">${meta}</div>
+                    <div class="search-result-actions">
+                        <button class="result-action secondary" data-action="view" data-index="${index}" type="button">查看</button>
+                        <button class="result-action" data-action="start" data-index="${index}" type="button">设为起点</button>
+                        <button class="result-action" data-action="end" data-index="${index}" type="button">设为终点</button>
+                        <button class="result-action secondary" data-action="waypoint" data-index="${index}" type="button">加为途经点</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        container.classList.add('show');
+        container.querySelectorAll('[data-action]').forEach((button) => {
+            button.addEventListener('click', async () => {
+                const index = Number(button.dataset.index);
+                const item = list[index];
+                if (!item || !item.location) return;
+                const [lng, lat] = item.location.split(',').map(Number);
+                if (button.dataset.action === 'view') {
+                    focusSearchResult(item);
+                    return;
+                }
+                if (button.dataset.action === 'waypoint') {
+                    await addWaypoint({
+                        lng,
+                        lat,
+                        name: [item.name, item.address].filter(Boolean).join(' · '),
+                    });
+                    map.setCenter([lng, lat]);
+                    showToast('已加入途经点');
+                    return;
+                }
+                await setPoint(button.dataset.action, {
+                    lng,
+                    lat,
+                    name: [item.name, item.address].filter(Boolean).join(' · '),
+                });
+                map.setCenter([lng, lat]);
+                showToast(button.dataset.action === 'start' ? '已设为起点' : '已设为终点');
+            });
+        });
+    }
+
+    function drawSearchMarkers(list) {
+        clearSearchMarkers();
+        searchMarkers = list.map((item) => {
+            const [lng, lat] = item.location.split(',').map(Number);
+            const marker = new AMap.Marker({
+                position: [lng, lat],
+                map,
+                offset: new AMap.Pixel(0, -6),
+            });
+            marker.on('click', () => focusSearchResult(item));
+            return marker;
+        });
+
+        if (searchMarkers.length) {
+            map.setFitView(searchMarkers, false, [100, 120, 100, 120]);
+        }
+    }
+
+    function clearSearchMarkers() {
+        searchMarkers.forEach((marker) => marker.setMap(null));
+        searchMarkers = [];
+    }
+
+    function focusSearchResult(item) {
+        if (!item.location) return;
+        const [lng, lat] = item.location.split(',').map(Number);
+        map.setCenter([lng, lat]);
+        map.setZoom(16);
+        if (!infoWindow) {
+            infoWindow = new AMap.InfoWindow({ offset: new AMap.Pixel(0, -24) });
+        }
+        infoWindow.setContent(`
+            <div style="padding: 4px 2px; max-width: 240px;">
+                <div style="font-weight: 700; color: #2d4a3e; margin-bottom: 6px;">${escapeHtml(item.name || '未知地点')}</div>
+                <div style="font-size: 12px; color: #6b7280; line-height: 1.5;">${escapeHtml(item.address || item.type || '暂无详细信息')}</div>
+            </div>
+        `);
+        infoWindow.open(map, [lng, lat]);
+    }
+
+    async function bootstrapLocation(fromButton = false) {
+        const btn = document.getElementById('locateBtn');
+        btn.classList.add('locating');
+        btn.textContent = '正在定位...';
+        try {
+            const data = await getBestLocation();
+            map.setCenter([data.lng, data.lat]);
+            map.setZoom(14);
+            if (!startCoord || fromButton) {
+                await setPoint('start', {
+                    lng: Number(data.lng),
+                    lat: Number(data.lat),
+                    name: data.name || (data.city ? `${data.city} · 我的位置` : '我的位置'),
+                });
+            }
+            updateLocationStatus(data);
+            if (fromButton) showToast('已定位到当前位置');
+        } catch (err) {
+            updateLocationStatus({
+                source: 'failed',
+                city: '',
+                name: '定位失败，当前为默认地图中心',
+            });
+            if (fromButton) showToast('定位失败，已保留默认中心');
+        } finally {
+            btn.classList.remove('locating');
+            btn.textContent = '定位我的位置';
+        }
+    }
+
+    async function getBestLocation() {
+        try {
+            return await locateByBrowser();
+        } catch (err) {
+            return await locateByIpFallback();
+        }
+    }
+
+    async function locateByBrowser() {
+        if (window.AMap && AMap.Geolocation) {
+            if (!geolocationControl) {
+                geolocationControl = new AMap.Geolocation({
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    zoomToAccuracy: false,
+                    position: 'RB',
+                });
+                map.addControl(geolocationControl);
+            }
+
+            return await new Promise((resolve, reject) => {
+                geolocationControl.getCurrentPosition((status, result) => {
+                    if (status === 'complete' && result && result.position) {
+                        resolve({
+                            lng: Number(result.position.lng),
+                            lat: Number(result.position.lat),
+                            city: result.addressComponent?.city || result.addressComponent?.province || '',
+                            name: result.formattedAddress || '我的位置',
+                            source: 'browser',
+                        });
+                        return;
+                    }
+                    reject(new Error('browser geolocation failed'));
+                });
+            });
+        }
+
+        if (navigator.geolocation) {
+            return await new Promise((resolve, reject) => {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        resolve({
+                            lng: position.coords.longitude,
+                            lat: position.coords.latitude,
+                            name: '我的位置',
+                            source: 'browser',
+                        });
+                    },
+                    () => reject(new Error('navigator geolocation failed')),
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+                );
+            });
+        }
+
+        throw new Error('no browser geolocation available');
+    }
+
+    async function locateByIpFallback() {
+        const resp = await fetch('/api/location');
+        const data = await resp.json();
+        return {
+            lng: Number(data.lng),
+            lat: Number(data.lat),
+            city: data.city || '',
+            name: data.city ? `${data.city} · 估算位置` : '估算位置',
+            source: 'ip',
+        };
+    }
+
+    function updateLocationStatus(location) {
+        const status = document.getElementById('locationStatus');
+        if (location.source === 'browser') {
+            status.classList.remove('muted');
+            status.innerHTML = `定位来源：<strong>浏览器高精度定位</strong><br>${escapeHtml(location.name || location.city || '已获取当前位置')}`;
+            return;
+        }
+
+        if (location.source === 'ip') {
+            status.classList.add('muted');
+            status.innerHTML = `定位来源：<strong>IP 估算</strong><br>${escapeHtml(location.name || location.city || '估算位置，可能不准确')}`;
+            return;
+        }
+
+        status.classList.add('muted');
+        status.textContent = location.name || '定位失败，当前为默认地图中心';
+    }
+
+    async function onMapClick(e) {
+        const lng = Number(e.lnglat.getLng().toFixed(6));
+        const lat = Number(e.lnglat.getLat().toFixed(6));
+
+        if (!startCoord) {
+            await setPoint('start', { lng, lat });
+            return;
+        }
+        if (!endCoord) {
+            await setPoint('end', { lng, lat });
+            return;
+        }
+        await addWaypoint({ lng, lat });
+    }
+
+    async function setPoint(kind, point) {
+        const name = point.name || await reverseGeocode(point.lng, point.lat);
+        const marker = new AMap.Marker({
+            position: [point.lng, point.lat],
+            label: { content: kind === 'start' ? '起' : '终', direction: 'top' },
+            map,
+        });
+
+        if (kind === 'start') {
+            if (startMarker) startMarker.setMap(null);
+            startMarker = marker;
+            startCoord = { lng: point.lng, lat: point.lat, name };
+            bindMarkerAnalysis(startMarker, startCoord, '起点');
+        } else {
+            if (endMarker) endMarker.setMap(null);
+            endMarker = marker;
+            endCoord = { lng: point.lng, lat: point.lat, name };
+            bindMarkerAnalysis(endMarker, endCoord, '终点');
+        }
+
+        searchState[kind].selectedName = name;
+        updatePointUI(kind);
+        hidePanel(kind);
+        updatePlanButton();
+        triggerRouteRefresh();
+    }
+
+    function updatePointUI(kind) {
+        const point = kind === 'start' ? startCoord : endCoord;
+        const input = document.getElementById(`${kind}-input`);
+        const hint = document.getElementById(`${kind}-hint`);
+        const card = document.getElementById(`card-${kind}`);
+
+        if (!point) {
+            input.value = '';
+            hint.textContent = kind === 'start' ? '尚未设置起点' : '尚未设置终点';
+            card.classList.remove('has-value');
+            return;
+        }
+
+        input.value = point.name || `${point.lng}, ${point.lat}`;
+        hint.textContent = `${point.lng.toFixed(6)}, ${point.lat.toFixed(6)}`;
+        card.classList.add('has-value');
+    }
+
+    function clearPoint(kind) {
+        if (kind === 'start') {
+            if (startMarker) startMarker.setMap(null);
+            startMarker = null;
+            startCoord = null;
+            clearWaypoints();
+        } else {
+            if (endMarker) endMarker.setMap(null);
+            endMarker = null;
+            endCoord = null;
+            clearWaypoints();
+        }
+        searchState[kind].selectedName = '';
+        hidePanel(kind);
+        updatePointUI(kind);
+        updatePlanButton();
+        renderWaypointList();
+        triggerRouteRefresh();
+    }
+
+    function updatePlanButton() {
+        const resultArea = document.getElementById('resultArea');
+        if (startCoord && endCoord) {
+            resultArea.innerHTML = '<div class="empty-state"><div class="icon">🧭</div><p>路线将根据点位变化自动刷新。</p></div>';
+            return;
+        }
+        resultArea.innerHTML = '<div class="empty-state"><div class="icon">🗺️</div><p>请先设置起点和终点；之后途经点变化会自动刷新路线图。</p></div>';
+    }
+
+    async function addWaypoint(point) {
+        const name = point.name || await reverseGeocode(point.lng, point.lat);
+        const index = waypointCoords.length + 1;
+        const marker = new AMap.Marker({
+            position: [point.lng, point.lat],
+            label: { content: `${index}`, direction: 'top' },
+            map,
+        });
+        const waypoint = { lng: point.lng, lat: point.lat, name };
+        waypointCoords.push(waypoint);
+        waypointMarkers.push(marker);
+        bindMarkerAnalysis(marker, waypoint, `途经点${index}`);
+        renderWaypointList();
+        triggerRouteRefresh();
+    }
+
+    function clearWaypoints() {
+        waypointMarkers.forEach((marker) => marker.setMap(null));
+        waypointMarkers = [];
+        waypointCoords = [];
+        renderWaypointList();
+        triggerRouteRefresh();
+    }
+
+    function removeWaypoint(index) {
+        const marker = waypointMarkers[index];
+        if (marker) marker.setMap(null);
+        waypointMarkers.splice(index, 1);
+        waypointCoords.splice(index, 1);
+        waypointMarkers.forEach((marker, idx) => {
+            marker.setLabel({ content: `${idx + 1}`, direction: 'top' });
+        });
+        renderWaypointList();
+        triggerRouteRefresh();
+    }
+
+    function renderWaypointList() {
+        const container = document.getElementById('waypointList');
+        if (!waypointCoords.length) {
+            container.innerHTML = '<div class="waypoint-meta">第三次点击地图后，会按顺序加入途经点。</div>';
+            return;
+        }
+        container.innerHTML = waypointCoords.map((point, index) => `
+            <div class="waypoint-item">
+                <div class="waypoint-badge">${index + 1}</div>
+                <div class="waypoint-info">
+                    <div class="waypoint-name">${escapeHtml(point.name || '未命名途经点')}</div>
+                    <div class="waypoint-meta">${point.lng.toFixed(6)}, ${point.lat.toFixed(6)}</div>
+                </div>
+                <button class="waypoint-remove" data-waypoint-index="${index}" type="button">×</button>
+            </div>
+        `).join('');
+        container.querySelectorAll('[data-waypoint-index]').forEach((button) => {
+            button.addEventListener('click', () => removeWaypoint(Number(button.dataset.waypointIndex)));
+        });
+    }
+
+    function bindMarkerAnalysis(marker, point, label) {
+        marker.on('mouseover', () => {
+            if (hoverPreviewTimer) {
+                clearTimeout(hoverPreviewTimer);
+            }
+            hoverPreviewTimer = setTimeout(() => {
+                if (!infoWindow) {
+                    infoWindow = new AMap.InfoWindow({ offset: new AMap.Pixel(0, -24) });
+                }
+                infoWindow.setContent(renderMarkerPreview(point, label));
+                infoWindow.open(map, [point.lng, point.lat]);
+            }, 180);
+        });
+        marker.on('mouseout', () => {
+            if (hoverPreviewTimer) {
+                clearTimeout(hoverPreviewTimer);
+                hoverPreviewTimer = null;
+            }
+        });
+        marker.on('click', async () => {
+            if (hoverPreviewTimer) {
+                clearTimeout(hoverPreviewTimer);
+                hoverPreviewTimer = null;
+            }
+            await analyzePoint(point, label);
+        });
+    }
+
+    async function analyzePoint(point, label) {
+        const cacheKey = getPointCacheKey(point);
+        if (pointAnalysisCache[cacheKey]) {
+            if (!infoWindow) {
+                infoWindow = new AMap.InfoWindow({ offset: new AMap.Pixel(0, -24) });
+            }
+            infoWindow.setContent(renderMarkerAnalysis(pointAnalysisCache[cacheKey], cacheKey));
+            infoWindow.open(map, [point.lng, point.lat]);
+            bindInfoWindowActions(cacheKey);
+            return;
+        }
+
+        if (!infoWindow) {
+            infoWindow = new AMap.InfoWindow({ offset: new AMap.Pixel(0, -24) });
+        }
+        infoWindow.setContent('<div class="marker-preview"><div class="marker-preview-title">正在分析...</div><div class="marker-preview-meta">请稍候</div></div>');
+        infoWindow.open(map, [point.lng, point.lat]);
+        try {
+            const resp = await fetch('/api/analyze-point', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ lng: point.lng, lat: point.lat, label }),
+            });
+            if (!resp.ok) {
+                const err = await resp.json();
+                throw new Error(err.detail || '点位分析失败');
+            }
+            const data = await resp.json();
+            const payload = {
+                ...data,
+                label: label || data.name || '点位分析',
+            };
+            pointAnalysisCache[cacheKey] = payload;
+            if (startCoord && point.lng === startCoord.lng && point.lat === startCoord.lat && startMarker) {
+                markMarkerAnalyzed(startMarker);
+            }
+            if (endCoord && point.lng === endCoord.lng && point.lat === endCoord.lat && endMarker) {
+                markMarkerAnalyzed(endMarker);
+            }
+            waypointCoords.forEach((waypoint, index) => {
+                if (point.lng === waypoint.lng && point.lat === waypoint.lat && waypointMarkers[index]) {
+                    markMarkerAnalyzed(waypointMarkers[index]);
+                }
+            });
+            infoWindow.setContent(renderMarkerAnalysis(payload, cacheKey));
+            infoWindow.open(map, [point.lng, point.lat]);
+            bindInfoWindowActions(cacheKey);
+        } catch (err) {
+            infoWindow.setContent(`<div class="error-banner">点位分析失败：${escapeHtml(err.message || '请求失败')}</div>`);
+            infoWindow.open(map, [point.lng, point.lat]);
+        }
+    }
+
+    async function reverseGeocode(lng, lat) {
+        try {
+            const geocoder = new AMap.Geocoder();
+            return await new Promise((resolve) => {
+                geocoder.getAddress([lng, lat], (status, result) => {
+                    if (status === 'complete' && result.regeocode) {
+                        resolve(result.regeocode.formattedAddress || `${lng}, ${lat}`);
+                        return;
+                    }
+                    resolve(`${lng}, ${lat}`);
+                });
+            });
+        } catch (err) {
+            return `${lng}, ${lat}`;
+        }
+    }
+
+    function handleSearchInput(kind) {
+        const input = document.getElementById(`${kind}-input`);
+        const keyword = input.value.trim();
+        searchState[kind].selectedName = '';
+        clearTimeout(searchState[kind].timer);
+
+        if (keyword.length < 2) {
+            hidePanel(kind);
+            return;
+        }
+
+        searchState[kind].timer = setTimeout(() => {
+            fetchSearchResults(kind, keyword);
+        }, 220);
+    }
+
+    async function fetchSearchResults(kind, keyword) {
+        const requestId = ++searchState[kind].requestId;
+        try {
+            const resp = await fetch(`/api/search?keywords=${encodeURIComponent(keyword)}`);
+            const list = await resp.json();
+            if (requestId !== searchState[kind].requestId) return;
+            if (!Array.isArray(list) || list.length === 0) {
+                renderSearchResults(kind, []);
+                return;
+            }
+            renderSearchResults(kind, list.filter(item => item.location));
+        } catch (err) {
+            hidePanel(kind);
+        }
+    }
+
+    function renderSearchResults(kind, list) {
+        const panel = document.getElementById(`${kind}-panel`);
+        if (!list.length) {
+            panel.innerHTML = '<div class="ac-item"><span class="ac-name">未找到相关地点</span></div>';
+            panel.classList.add('show');
+            return;
+        }
+
+        panel.innerHTML = list.slice(0, 6).map((item, index) => {
+            const title = escapeHtml(item.name || '未知地点');
+            const district = escapeHtml([item.address, item.type].filter(Boolean).join(' · '));
+            return `
+                <div class="ac-item" data-kind="${kind}" data-index="${index}">
+                    <div>
+                        <div class="ac-name">${title}</div>
+                        <div class="ac-district">${district || '暂无详细地址'}</div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        panel.classList.add('show');
+        panel.querySelectorAll('.ac-item').forEach((node, index) => {
+            node.addEventListener('click', async () => {
+                const item = list[index];
+                if (!item.location) return;
+                const [lng, lat] = item.location.split(',').map(Number);
+                await setPoint(kind, {
+                    lng,
+                    lat,
+                    name: [item.name, item.address].filter(Boolean).join(' · '),
+                });
+                map.setCenter([lng, lat]);
+            });
+        });
+    }
+
+    function hidePanel(kind) {
+        const panel = document.getElementById(`${kind}-panel`);
+        panel.classList.remove('show');
+        panel.innerHTML = '';
+    }
+
+    function escapeHtml(value) {
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    let routeRefreshTimer = null;
+
+    function triggerRouteRefresh() {
+        if (routeRefreshTimer) {
+            clearTimeout(routeRefreshTimer);
+        }
+        routeRefreshTimer = setTimeout(() => {
+            refreshRoute();
+        }, 220);
+    }
+
+    // ── 路线卡折叠状态（模块级，路线刷新不重置）──
+    let routeCardCollapsed = false;
+
+    function toggleRouteCard() {
+        routeCardCollapsed = !routeCardCollapsed;
+        const card = document.getElementById('routeFloatingCard');
+        const btn  = document.getElementById('routeCardToggle');
+        card.classList.toggle('collapsed', routeCardCollapsed);
+        btn.setAttribute('aria-expanded', routeCardCollapsed ? 'false' : 'true');
+        btn.setAttribute('aria-label', routeCardCollapsed ? '展开路线卡' : '折叠路线卡');
+    }
+
+    async function refreshRoute() {
+        const routeCard = document.getElementById('routeFloatingCard');
+        if (!startCoord || !endCoord) {
+            clearRouteLine();
+            routeCard.classList.remove('show');
+            return;
+        }
+
+        const resultArea = document.getElementById('resultArea');
+        resultArea.innerHTML = '<div class="empty-state"><div class="icon">⏳</div><p>路线规划中，请稍候...</p></div>';
+
+        try {
+            const resp = await fetch('/api/plan', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    start_lng: startCoord.lng,
+                    start_lat: startCoord.lat,
+                    end_lng: endCoord.lng,
+                    end_lat: endCoord.lat,
+                    mode: currentMode,
+                    waypoints: waypointCoords.map((point) => ({ lng: point.lng, lat: point.lat, label: point.name || '' })),
+                }),
+            });
+
+            if (!resp.ok) {
+                const err = await resp.json();
+                throw new Error(err.detail || '请求失败');
+            }
+
+            const data = await resp.json();
+
+            if (routeLine) routeLine.setMap(null);
+            const path = data.route.map(p => new AMap.LngLat(p[0], p[1]));
+            routeLine = new AMap.Polyline({
+                path: path,
+                strokeColor: '#c45d3e',
+                strokeWeight: 4,
+                strokeOpacity: 0.85,
+                lineJoin: 'round',
+                lineCap: 'round',
+                map: map,
+            });
+            map.setFitView([routeLine], false, [80, 80, 80, 80]);
+
+            const distKm = (data.distance / 1000).toFixed(1);
+            const durMin = Math.ceil(data.duration / 60);
+            const modeHtml = `<div class="mode-badge">${renderModeLabel(data.mode || currentMode)}</div>`;
+            const transitSummaryHtml = data.transit_summary
+                ? `<div class="transit-summary">换乘摘要：${escapeHtml(data.transit_summary)}</div>`
+                : '';
+            const transitStepsHtml = renderTransitSteps(data.transit_steps);
+
+            // 更新折叠态摘要行（header 内，折叠时可见）
+            const summaryEl = document.getElementById('routeCardSummary');
+            if (summaryEl) {
+                summaryEl.innerHTML =
+                    `${modeHtml}<span class="stat-chip-sm">${distKm} km</span><span class="stat-chip-sm">${durMin} min</span>`;
+            }
+
+            // 更新展开态主体（不覆盖 header 和 drag-handle）
+            const bodyEl = document.getElementById('routeCardBody');
+            if (bodyEl) {
+                bodyEl.innerHTML = `
+                    <div class="animate-in">
+                        ${transitSummaryHtml}
+                        ${transitStepsHtml}
+                        <div class="route-stats">
+                            <div class="stat-chip">
+                                <div class="num">${distKm}</div>
+                                <div class="unit">公里</div>
+                            </div>
+                            <div class="stat-chip">
+                                <div class="num">${durMin}</div>
+                                <div class="unit">分钟</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            // 不重置 .collapsed class，保持用户折叠偏好
+            routeCard.classList.add('show');
+            resultArea.innerHTML = '<div class="empty-state"><div class="icon">✅</div><p>路线图已自动刷新。点击地图上的任意点位标记，可单独触发 AI 景点分析。</p></div>';
+
+            showToast('路线图生成成功');
+        } catch (err) {
+            const msg = String(err.message || '请求失败');
+            let hint = '';
+            if (msg.includes('超出高德') || msg.includes('距离过长')) {
+                hint = '<br>建议切换到公交地铁模式，或缩短起终点距离后再试。';
+            } else if (msg.includes('限流') || msg.includes('请求过于频繁')) {
+                hint = '<br>请稍等几秒后重试，或减少途经点数量。';
+            }
+            resultArea.innerHTML = `<div class="error-banner">生成失败：${err.message}${hint}</div>`;
+            routeCard.classList.remove('show');
+            showToast('生成失败，请重试');
+        }
+    }
+
+    function renderWeather(weather) {
+        if (!weather) return '';
+        return `
+            <div class="weather-card">
+                <div class="weather-main">
+                    <div class="weather-city">${weather.city || weather.province || '当前天气'}</div>
+                    <div class="weather-status">${weather.weather || '天气未知'}</div>
+                    <div class="weather-meta">${weather.winddirection || ''}风 ${weather.windpower || ''}级 · 湿度 ${weather.humidity || '--'}%</div>
+                </div>
+                <div class="weather-temp">${weather.temperature || '--'}°</div>
+            </div>
+        `;
+    }
+
+    function renderModeLabel(mode) {
+        if (mode === 'transit') return '当前路线：公交地铁';
+        return '当前路线：步行';
+    }
+
+    function renderTransitSteps(steps) {
+        if (!Array.isArray(steps) || !steps.length) return '';
+        const items = steps.map((step) => `<li>${escapeHtml(step)}</li>`).join('');
+        return `
+            <div class="transit-steps">
+                <h4>交通路线</h4>
+                <ol>${items}</ol>
+            </div>
+        `;
+    }
+
+    function showToast(msg) {
+        const toast = document.getElementById('toast');
+        toast.textContent = msg;
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 2500);
+    }
+
+    initMap();
+</script>
+</body>
+</html>
