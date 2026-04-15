@@ -1,5 +1,6 @@
 import os
 import httpx
+import warnings
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -32,8 +33,6 @@ def get_configs() -> tuple[dict, dict]:
     """Return shallow copies of current guide and point configs."""
     return dict(_guide_cfg), dict(_point_cfg)
 
-
-import warnings
 
 if not _guide_cfg["key"]:
     warnings.warn("GUIDE_LLM_KEY is not set — route guide generation will fail", RuntimeWarning, stacklevel=1)

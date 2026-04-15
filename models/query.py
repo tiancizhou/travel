@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 class Waypoint(BaseModel):
@@ -69,13 +69,26 @@ class LLMProviderConfig(BaseModel):
     base_url: str
     model: str
 
+    @field_validator("base_url", "model")
+    @classmethod
+    def must_be_non_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("must not be empty")
+        return v
+
 
 class ConfigRequest(BaseModel):
     guide: LLMProviderConfig
     point: LLMProviderConfig
 
 
+class MaskedProviderConfig(BaseModel):
+    key: str        # masked (first 8 chars + ***)
+    base_url: str
+    model: str
+
+
 class ConfigResponse(BaseModel):
     ok: bool
-    guide: dict   # {key: str (masked), base_url: str, model: str}
-    point: dict   # {key: str (masked), base_url: str, model: str}
+    guide: MaskedProviderConfig
+    point: MaskedProviderConfig

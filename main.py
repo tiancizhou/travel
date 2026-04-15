@@ -13,6 +13,7 @@ from models.query import (
     PointAnalysisResponse,
     ConfigRequest,
     ConfigResponse,
+    MaskedProviderConfig,
 )
 from services.amap import (
     get_route,
@@ -51,6 +52,9 @@ def _write_env_vars(updates: dict[str, str]) -> None:
     written: set[str] = set()
     new_lines: list[str] = []
     for line in lines:
+        if "=" not in line or line.lstrip().startswith("#"):
+            new_lines.append(line)
+            continue
         key = line.split("=", 1)[0].strip()
         if key in updates:
             new_lines.append(f"{key}={updates[key]}")
@@ -209,21 +213,27 @@ async def history(limit: int = 20):
     return await get_history(limit)
 
 
-@app.get("/api/config")
-async def get_config():
+def _config_response() -> ConfigResponse:
+    """Build a ConfigResponse from the current live LLM configs with masked keys."""
     guide_cfg, point_cfg = get_configs()
-    return {
-        "guide": {
-            "key":      _mask_key(guide_cfg["key"]),
-            "base_url": guide_cfg["base_url"],
-            "model":    guide_cfg["model"],
-        },
-        "point": {
-            "key":      _mask_key(point_cfg["key"]),
-            "base_url": point_cfg["base_url"],
-            "model":    point_cfg["model"],
-        },
-    }
+    return ConfigResponse(
+        ok=True,
+        guide=MaskedProviderConfig(
+            key=_mask_key(guide_cfg["key"]),
+            base_url=guide_cfg["base_url"],
+            model=guide_cfg["model"],
+        ),
+        point=MaskedProviderConfig(
+            key=_mask_key(point_cfg["key"]),
+            base_url=point_cfg["base_url"],
+            model=point_cfg["model"],
+        ),
+    )
+
+
+@app.get("/api/config", response_model=ConfigResponse)
+async def get_config():
+    return _config_response()
 
 
 @app.post("/api/config", response_model=ConfigResponse)
@@ -234,7 +244,7 @@ async def set_config(req: ConfigRequest):
     guide_key = req.guide.key if req.guide.key else guide_cfg["key"]
     point_key = req.point.key if req.point.key else point_cfg["key"]
 
-    # Hot-update in-memory config
+    # Hot-update in-memory config (base_url/model validated non-empty by Pydantic)
     update_guide_cfg(guide_key, req.guide.base_url, req.guide.model)
     update_point_cfg(point_key, req.point.base_url, req.point.model)
 
@@ -251,17 +261,5 @@ async def set_config(req: ConfigRequest):
         env_updates["POINT_LLM_KEY"] = req.point.key
     _write_env_vars(env_updates)
 
-    guide_final, point_final = get_configs()
-    return ConfigResponse(
-        ok=True,
-        guide={
-            "key":      _mask_key(guide_final["key"]),
-            "base_url": guide_final["base_url"],
-            "model":    guide_final["model"],
-        },
-        point={
-            "key":      _mask_key(point_final["key"]),
-            "base_url": point_final["base_url"],
-            "model":    point_final["model"],
-        },
-    )
+    # Return current state (second get_configs() call is safe — no await between updates above)
+    return _config_response()
