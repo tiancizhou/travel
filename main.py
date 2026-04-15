@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
@@ -10,6 +11,8 @@ from models.query import (
     PlanResponse,
     PointAnalysisRequest,
     PointAnalysisResponse,
+    ConfigRequest,
+    ConfigResponse,
 )
 from services.amap import (
     get_route,
@@ -24,7 +27,40 @@ from services.amap import (
     get_weather,
     ip_locate,
 )
-from services.llm import generate_city_walk_guide, generate_point_analysis
+from services.llm import (
+    generate_city_walk_guide,
+    generate_point_analysis,
+    update_guide_cfg,
+    update_point_cfg,
+    get_configs,
+)
+
+
+
+def _mask_key(key: str) -> str:
+    """Return first 8 chars + '***', or '***' if key is shorter than 8 chars."""
+    if not key:
+        return ""
+    return key[:8] + "***" if len(key) >= 8 else "***"
+
+
+def _write_env_vars(updates: dict[str, str]) -> None:
+    """Overwrite specific key=value lines in .env; append any keys not already present."""
+    env_path = Path(".env")
+    lines = env_path.read_text(encoding="utf-8").splitlines() if env_path.exists() else []
+    written: set[str] = set()
+    new_lines: list[str] = []
+    for line in lines:
+        key = line.split("=", 1)[0].strip()
+        if key in updates:
+            new_lines.append(f"{key}={updates[key]}")
+            written.add(key)
+        else:
+            new_lines.append(line)
+    for key, value in updates.items():
+        if key not in written:
+            new_lines.append(f"{key}={value}")
+    env_path.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
 
 
 @asynccontextmanager
@@ -171,3 +207,61 @@ async def locate(request: Request):
 @app.get("/api/history")
 async def history(limit: int = 20):
     return await get_history(limit)
+
+
+@app.get("/api/config")
+async def get_config():
+    guide_cfg, point_cfg = get_configs()
+    return {
+        "guide": {
+            "key":      _mask_key(guide_cfg["key"]),
+            "base_url": guide_cfg["base_url"],
+            "model":    guide_cfg["model"],
+        },
+        "point": {
+            "key":      _mask_key(point_cfg["key"]),
+            "base_url": point_cfg["base_url"],
+            "model":    point_cfg["model"],
+        },
+    }
+
+
+@app.post("/api/config", response_model=ConfigResponse)
+async def set_config(req: ConfigRequest):
+    guide_cfg, point_cfg = get_configs()
+
+    # Empty string = user did not modify the key; keep existing value
+    guide_key = req.guide.key if req.guide.key else guide_cfg["key"]
+    point_key = req.point.key if req.point.key else point_cfg["key"]
+
+    # Hot-update in-memory config
+    update_guide_cfg(guide_key, req.guide.base_url, req.guide.model)
+    update_point_cfg(point_key, req.point.base_url, req.point.model)
+
+    # Write back to .env (key only written when user provided a new one)
+    env_updates: dict[str, str] = {
+        "GUIDE_LLM_BASE_URL": req.guide.base_url,
+        "GUIDE_LLM_MODEL":    req.guide.model,
+        "POINT_LLM_BASE_URL": req.point.base_url,
+        "POINT_LLM_MODEL":    req.point.model,
+    }
+    if req.guide.key:
+        env_updates["GUIDE_LLM_KEY"] = req.guide.key
+    if req.point.key:
+        env_updates["POINT_LLM_KEY"] = req.point.key
+    _write_env_vars(env_updates)
+
+    guide_final, point_final = get_configs()
+    return ConfigResponse(
+        ok=True,
+        guide={
+            "key":      _mask_key(guide_final["key"]),
+            "base_url": guide_final["base_url"],
+            "model":    guide_final["model"],
+        },
+        point={
+            "key":      _mask_key(point_final["key"]),
+            "base_url": point_final["base_url"],
+            "model":    point_final["model"],
+        },
+    )

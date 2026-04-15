@@ -62,3 +62,20 @@ class HistoryItem(BaseModel):
     distance: int | None = None
     duration: int | None = None
     guide: str | None = None
+
+
+class LLMProviderConfig(BaseModel):
+    key: str
+    base_url: str
+    model: str
+
+
+class ConfigRequest(BaseModel):
+    guide: LLMProviderConfig
+    point: LLMProviderConfig
+
+
+class ConfigResponse(BaseModel):
+    ok: bool
+    guide: dict   # {key: str (masked), base_url: str, model: str}
+    point: dict   # {key: str (masked), base_url: str, model: str}
