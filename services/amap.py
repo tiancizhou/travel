@@ -171,11 +171,19 @@ def parse_transit_route(
                 )
             else:
                 steps_summary.append(f"乘坐{line_name}")
-            for stop in railway.get("via_stops", []):
-                location = stop.get("location", "")
-                parts = location.split(",")
-                if len(parts) == 2:
-                    points.append([float(parts[0]), float(parts[1])])
+            # 优先使用 polyline（沿线坐标串），退而取 via_stops 离散站点
+            railway_polyline = railway.get("polyline", "")
+            if railway_polyline:
+                for seg in railway_polyline.split(";"):
+                    parts = seg.split(",")
+                    if len(parts) == 2:
+                        points.append([float(parts[0]), float(parts[1])])
+            else:
+                for stop in railway.get("via_stops", []):
+                    location = stop.get("location", "")
+                    parts = location.split(",")
+                    if len(parts) == 2:
+                        points.append([float(parts[0]), float(parts[1])])
 
     summary = " -> ".join(summary_parts[:4]) if summary_parts else None
     return distance, duration, points, summary, steps_summary or None
