@@ -390,6 +390,7 @@
         .sidebar-header {
             padding: 28px 28px 20px;
             border-bottom: 1px solid rgba(138, 133, 120, 0.12);
+            position: relative;
         }
 
         .sidebar-header h2 {
@@ -1130,10 +1131,6 @@
         }
 
         /* ── Settings panel ── */
-        .sidebar-header {
-            position: relative;
-        }
-
         .settings-btn {
             position: absolute;
             top: 28px;
@@ -1153,10 +1150,17 @@
         }
 
         .settings-panel {
+            display: none;
             border-top: 1px solid rgba(138, 133, 120, 0.12);
             padding: 20px 28px;
             background: var(--cream);
+            max-height: 320px;
             overflow-y: auto;
+            flex-shrink: 0;
+        }
+
+        .settings-panel.open {
+            display: block;
         }
 
         .settings-section {
@@ -1186,7 +1190,7 @@
             padding: 6px 10px;
             font-size: 0.82rem;
             background: white;
-            color: var(--text);
+            color: var(--ink);
             outline: none;
             width: 100%;
             box-sizing: border-box;
@@ -1384,7 +1388,7 @@
             </div>
         </div>
 
-        <div class="settings-panel" id="settingsPanel" style="display:none">
+        <div class="settings-panel" id="settingsPanel">
             <div class="settings-section">
                 <h4>🤖 路线建议模型 (GLM)</h4>
                 <label>Base URL<input id="guideBaseUrl" type="text"></label>
@@ -1444,12 +1448,14 @@
             const resp = await fetch('/api/config');
             if (!resp.ok) return;
             const data = await resp.json();
-            document.getElementById('guideBaseUrl').value = data.guide.base_url || '';
-            document.getElementById('guideModel').value   = data.guide.model    || '';
-            document.getElementById('guideKey').value     = data.guide.key      || '';
-            document.getElementById('pointBaseUrl').value = data.point.base_url || '';
-            document.getElementById('pointModel').value   = data.point.model    || '';
-            document.getElementById('pointKey').value     = data.point.key      || '';
+            document.getElementById('guideBaseUrl').value = data.guide?.base_url || '';
+            document.getElementById('guideModel').value   = data.guide?.model    || '';
+            document.getElementById('guideKey').value     = data.guide?.key      || '';
+            document.getElementById('pointBaseUrl').value = data.point?.base_url || '';
+            document.getElementById('pointModel').value   = data.point?.model    || '';
+            document.getElementById('pointKey').value     = data.point?.key      || '';
+            document.getElementById('guideKey').removeAttribute('data-dirty');
+            document.getElementById('pointKey').removeAttribute('data-dirty');
         } catch (_) { /* ignore — settings panel shows blank on failure */ }
     }
 
@@ -1460,12 +1466,12 @@
         // string so the backend keeps the existing key
         const body = {
             guide: {
-                key:      guideKeyEl.value.includes('*') ? '' : guideKeyEl.value,
+                key:      guideKeyEl.dataset.dirty ? guideKeyEl.value : '',
                 base_url: document.getElementById('guideBaseUrl').value,
                 model:    document.getElementById('guideModel').value,
             },
             point: {
-                key:      pointKeyEl.value.includes('*') ? '' : pointKeyEl.value,
+                key:      pointKeyEl.dataset.dirty ? pointKeyEl.value : '',
                 base_url: document.getElementById('pointBaseUrl').value,
                 model:    document.getElementById('pointModel').value,
             },
@@ -1483,6 +1489,8 @@
                 // Update key fields with masked values returned from backend
                 document.getElementById('guideKey').value = data.guide.key;
                 document.getElementById('pointKey').value = data.point.key;
+                document.getElementById('guideKey').removeAttribute('data-dirty');
+                document.getElementById('pointKey').removeAttribute('data-dirty');
                 status.textContent = '✅ 已保存';
                 showToast('配置已保存');
             } else {
@@ -1553,10 +1561,12 @@
         }());
 
         // ⚙ 设置面板切换
-        document.getElementById('settingsBtn').addEventListener('click', function () {
-            const panel = document.getElementById('settingsPanel');
-            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-        });
+        const settingsBtn = document.getElementById('settingsBtn');
+        if (settingsBtn) {
+            settingsBtn.addEventListener('click', function () {
+                document.getElementById('settingsPanel').classList.toggle('open');
+            });
+        }
 
         // 保存配置按钮
         document.getElementById('saveConfigBtn').addEventListener('click', saveConfig);
@@ -1567,6 +1577,14 @@
                 const input = document.getElementById(btn.dataset.target);
                 input.type = input.type === 'password' ? 'text' : 'password';
             });
+        });
+
+        // Mark key inputs dirty when user types (so saveConfig knows to send the new value)
+        document.getElementById('guideKey').addEventListener('input', function () {
+            this.dataset.dirty = 'true';
+        });
+        document.getElementById('pointKey').addEventListener('input', function () {
+            this.dataset.dirty = 'true';
         });
     }
 
