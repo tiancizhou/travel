@@ -2,7 +2,10 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#f5f0e8">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>City Walk 旅游助手</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
@@ -1102,6 +1105,16 @@
             100% { content: ''; }
         }
 
+        /* 移动端底部抽屉把手：桌面端不显示 */
+        .mobile-sheet-handle { display: none; }
+
+        /* sidebar-scroll：桌面端作为内部滚动容器 */
+        .sidebar-scroll {
+            flex: 1;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
         .marker-action-row {
             display: flex;
             justify-content: flex-end;
@@ -1319,6 +1332,215 @@
             }
         }
 
+        /* ═══════════════════════════════════════
+           MOBILE LAYOUT  ≤ 768px
+           地图全屏 + 底部抽屉 (bottom sheet)
+        ═══════════════════════════════════════ */
+        @media (max-width: 768px) {
+
+            /* ── Header: 精简为固定顶部浮层 ── */
+            .app-header {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                z-index: 300;
+                padding: 10px 16px;
+                padding-top: max(10px, env(safe-area-inset-top));
+                min-height: 48px;
+                height: auto;
+            }
+
+            .logo {
+                font-size: 1.1rem;
+            }
+
+            .logo-icon {
+                width: 28px;
+                height: 28px;
+                font-size: 0.85rem;
+            }
+
+            .header-hint {
+                display: none;
+            }
+
+            /* ── Layout: 地图全屏 ── */
+            .main-layout {
+                display: block;
+                height: 100dvh;
+                height: 100vh; /* fallback */
+                position: relative;
+            }
+
+            .map-container {
+                position: fixed;
+                inset: 0;
+                z-index: 1;
+            }
+
+            #map {
+                width: 100%;
+                height: 100%;
+            }
+
+            /* ── 地图搜索栏：顶部居中，header 之下 ── */
+            .map-search-shell {
+                position: fixed;
+                top: max(58px, calc(env(safe-area-inset-top) + 48px));
+                left: 10px;
+                right: 10px;
+                width: auto;
+                z-index: 250;
+            }
+
+            /* ── 地图说明浮层：左上角更小 ── */
+            .map-overlay {
+                top: max(58px, calc(env(safe-area-inset-top) + 48px));
+                left: 10px;
+                padding: 8px 10px;
+                font-size: 0.75rem;
+            }
+
+            .map-overlay h3 {
+                font-size: 0.8rem;
+            }
+
+            /* ── 路线浮层卡片：在底部抽屉上方 ── */
+            .route-floating-card {
+                position: fixed;
+                left: 10px;
+                right: 10px;
+                bottom: calc(var(--sheet-h, 264px) + 8px);
+                width: auto;
+                z-index: 210;
+                transition: bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+
+            /* ── 底部抽屉 sidebar ── */
+            .sidebar {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                height: var(--sheet-h, 264px);
+                max-height: 85dvh;
+                max-height: 85vh;
+                border-radius: 20px 20px 0 0;
+                border-left: none;
+                border-top: none;
+                box-shadow: 0 -4px 32px rgba(0, 0, 0, 0.14);
+                z-index: 200;
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
+                transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                padding-bottom: env(safe-area-inset-bottom);
+            }
+
+            .sidebar.sheet-expanded {
+                height: 85dvh;
+                height: 85vh;
+            }
+
+            /* ── 拖拽把手 ── */
+            .mobile-sheet-handle {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 24px;
+                flex-shrink: 0;
+                cursor: pointer;
+                touch-action: none;
+            }
+
+            .mobile-sheet-handle::before {
+                content: '';
+                width: 44px;
+                height: 4px;
+                background: rgba(138, 133, 120, 0.35);
+                border-radius: 2px;
+                transition: background 0.2s;
+            }
+
+            .mobile-sheet-handle:active::before {
+                background: rgba(138, 133, 120, 0.65);
+            }
+
+            /* ── Sidebar 内容可滚动 ── */
+            .sidebar-scroll {
+                flex: 1;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+                overscroll-behavior: contain;
+            }
+
+            /* ── Sidebar header 精简 ── */
+            .sidebar-header {
+                padding: 0 20px 14px;
+                border-bottom: 1px solid rgba(138, 133, 120, 0.1);
+                flex-shrink: 0;
+            }
+
+            .sidebar-header h2 {
+                font-size: 1.1rem;
+            }
+
+            .sidebar-header p {
+                display: none;
+            }
+
+            /* ── coord-cards 间距更紧凑 ── */
+            .coord-cards {
+                padding: 14px 16px;
+                gap: 10px;
+            }
+
+            .coord-card {
+                padding: 11px 13px;
+            }
+
+            /* ── 定位按钮 ── */
+            .geolocation-btn {
+                margin: 0 16px 8px;
+            }
+
+            .location-status {
+                padding: 0 16px 8px;
+            }
+
+            /* ── 模式切换 ── */
+            .mode-switcher {
+                margin: 0 16px 12px;
+            }
+
+            /* ── 途经点 ── */
+            .waypoint-section {
+                padding: 0 16px 12px;
+            }
+
+            /* ── 规划按钮 ── */
+            .plan-btn {
+                margin: 0 16px 12px;
+            }
+
+            /* ── 结果区域 ── */
+            .result-area {
+                padding: 0 16px 12px;
+            }
+
+            /* ── 设置面板 ── */
+            .settings-panel {
+                max-height: none;
+                padding: 12px 16px;
+            }
+
+            /* ── 地图工具按钮不要被 header 遮住 ── */
+            .amap-geolocation-con {
+                top: max(60px, calc(env(safe-area-inset-top) + 56px)) !important;
+            }
+        }
+
         @keyframes fadeInUp {
             from { opacity: 0; transform: translateY(12px); }
             to { opacity: 1; transform: translateY(0); }
@@ -1374,13 +1596,17 @@
         </div>
     </div>
 
-    <div class="sidebar">
+    <div class="sidebar" id="sidebar">
+        <!-- 移动端底部抽屉拖拽把手 -->
+        <div class="mobile-sheet-handle" id="mobileSheetHandle"></div>
+
         <div class="sidebar-header">
             <h2>路线规划</h2>
             <p>点击地图构建起点、途经点、终点，并生成交通路线图</p>
             <button class="settings-btn" id="settingsBtn" type="button" title="模型配置">⚙</button>
         </div>
 
+        <div class="sidebar-scroll">
         <div class="coord-cards">
             <div class="coord-card" id="card-start">
                 <label>
@@ -1455,7 +1681,7 @@
                 <span id="saveConfigStatus"></span>
             </div>
         </div>
-
+        </div><!-- /.sidebar-scroll -->
     </div>
 </div>
 
@@ -1554,6 +1780,7 @@
         bindEvents();
         loadConfig();
         bootstrapLocation();
+        initSheetHeight();
     }
 
     function bindEvents() {
@@ -1604,6 +1831,14 @@
         if (settingsBtn) {
             settingsBtn.addEventListener('click', function () {
                 document.getElementById('settingsPanel').classList.toggle('open');
+                // 移动端：打开设置时自动展开抽屉
+                if (window.innerWidth <= 768) {
+                    const sb = document.getElementById('sidebar');
+                    if (sb && !sb.classList.contains('sheet-expanded')) {
+                        sb.classList.add('sheet-expanded');
+                        syncSheetHeight(sb, true);
+                    }
+                }
             });
         }
 
@@ -1625,6 +1860,33 @@
         document.getElementById('pointKey').addEventListener('input', function () {
             this.dataset.dirty = 'true';
         });
+
+        // ── 移动端底部抽屉 ──
+        const mobileHandle = document.getElementById('mobileSheetHandle');
+        const sidebar = document.getElementById('sidebar');
+        if (mobileHandle && sidebar) {
+            mobileHandle.addEventListener('click', function () {
+                const expanded = sidebar.classList.toggle('sheet-expanded');
+                syncSheetHeight(sidebar, expanded);
+            });
+        }
+    }
+
+    /**
+     * 同步底部抽屉高度到 CSS 变量，让路线浮层卡片随之移动。
+     * 只在移动端（≤768px）生效。
+     */
+    function syncSheetHeight(sidebar, expanded) {
+        if (window.innerWidth > 768) return;
+        const h = expanded ? Math.round(window.innerHeight * 0.85) : 264;
+        document.documentElement.style.setProperty('--sheet-h', h + 'px');
+    }
+
+    /** 页面加载后初始化 CSS 变量 */
+    function initSheetHeight() {
+        const sidebar = document.getElementById('sidebar');
+        if (!sidebar) return;
+        syncSheetHeight(sidebar, sidebar.classList.contains('sheet-expanded'));
     }
 
     function getPointCacheKey(point) {
