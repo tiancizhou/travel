@@ -1,0 +1,13 @@
+[project]
+name = "travel"
+version = "0.1.0"
+description = "City Walk 旅游助手 - 基于 FastAPI + 高德地图 + GLM"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.34",
+    "httpx>=0.28",
+    "openai>=1.82",
+    "python-dotenv>=1.1",
+    "aiosqlite>=0.21",
+]
