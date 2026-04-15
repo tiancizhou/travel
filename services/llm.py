@@ -17,16 +17,28 @@ _point_cfg: dict = {
 
 
 def update_guide_cfg(key: str, base_url: str, model: str) -> None:
+    if not key or not base_url or not model:
+        raise ValueError("key, base_url, and model must all be non-empty strings")
     _guide_cfg.update({"key": key, "base_url": base_url, "model": model})
 
 
 def update_point_cfg(key: str, base_url: str, model: str) -> None:
+    if not key or not base_url or not model:
+        raise ValueError("key, base_url, and model must all be non-empty strings")
     _point_cfg.update({"key": key, "base_url": base_url, "model": model})
 
 
 def get_configs() -> tuple[dict, dict]:
     """Return shallow copies of current guide and point configs."""
     return dict(_guide_cfg), dict(_point_cfg)
+
+
+import warnings
+
+if not _guide_cfg["key"]:
+    warnings.warn("GUIDE_LLM_KEY is not set — route guide generation will fail", RuntimeWarning, stacklevel=1)
+if not _point_cfg["key"]:
+    warnings.warn("POINT_LLM_KEY is not set — point analysis will fail", RuntimeWarning, stacklevel=1)
 
 CITY_WALK_PROMPT = """你是一位非常务实的本地出行规划助手，请根据真实路线信息生成可执行的路线建议。
 
@@ -184,16 +196,17 @@ async def generate_city_walk_guide(
         mode_instruction=f"{mode_instruction} {walk_feasibility}",
     )
 
+    cfg = dict(_guide_cfg)  # snapshot — values are all str, shallow copy is safe
     async with httpx.AsyncClient() as client:
         resp = await client.post(
-            f"{_guide_cfg['base_url']}/v1/messages",
+            f"{cfg['base_url']}/v1/messages",
             headers={
-                "x-api-key": _guide_cfg["key"],
+                "x-api-key": cfg["key"],
                 "anthropic-version": "2023-06-01",
                 "content-type": "application/json",
             },
             json={
-                "model": _guide_cfg["model"],
+                "model": cfg["model"],
                 "max_tokens": 1024,
                 "messages": [{"role": "user", "content": prompt}],
             },
@@ -244,15 +257,16 @@ async def generate_point_analysis(
         landmarks=landmark_lines,
     )
 
+    cfg = dict(_point_cfg)  # snapshot — values are all str, shallow copy is safe
     async with httpx.AsyncClient() as client:
         resp = await client.post(
-            f"{_point_cfg['base_url']}/v1/chat/completions",
+            f"{cfg['base_url']}/v1/chat/completions",
             headers={
-                "Authorization": f"Bearer {_point_cfg['key']}",
+                "Authorization": f"Bearer {cfg['key']}",
                 "Content-Type": "application/json",
             },
             json={
-                "model": _point_cfg["model"],
+                "model": cfg["model"],
                 "max_tokens": 512,
                 "messages": [{"role": "user", "content": prompt}],
             },
