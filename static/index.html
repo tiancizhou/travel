@@ -1129,6 +1129,122 @@
             margin-bottom: 16px;
         }
 
+        /* ── Settings panel ── */
+        .sidebar-header {
+            position: relative;
+        }
+
+        .settings-btn {
+            position: absolute;
+            top: 28px;
+            right: 28px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.1rem;
+            color: var(--muted);
+            padding: 4px;
+            line-height: 1;
+            transition: color 0.2s ease;
+        }
+
+        .settings-btn:hover {
+            color: var(--forest);
+        }
+
+        .settings-panel {
+            border-top: 1px solid rgba(138, 133, 120, 0.12);
+            padding: 20px 28px;
+            background: var(--cream);
+            overflow-y: auto;
+        }
+
+        .settings-section {
+            margin-bottom: 16px;
+        }
+
+        .settings-section h4 {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--forest);
+            margin-bottom: 10px;
+        }
+
+        .settings-section label {
+            display: flex;
+            flex-direction: column;
+            font-size: 0.78rem;
+            color: var(--muted);
+            gap: 3px;
+            margin-bottom: 8px;
+        }
+
+        .settings-section input[type="text"],
+        .settings-section input[type="password"] {
+            border: 1px solid rgba(138, 133, 120, 0.3);
+            border-radius: 8px;
+            padding: 6px 10px;
+            font-size: 0.82rem;
+            background: white;
+            color: var(--text);
+            outline: none;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .settings-section input:focus {
+            border-color: var(--forest);
+        }
+
+        .key-input-wrap {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .key-input-wrap input {
+            padding-right: 32px;
+        }
+
+        .eye-btn {
+            position: absolute;
+            right: 6px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 0.9rem;
+            color: var(--muted);
+            padding: 2px;
+            line-height: 1;
+        }
+
+        .settings-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 4px;
+        }
+
+        .settings-actions button {
+            background: var(--forest);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 8px 18px;
+            font-size: 0.82rem;
+            cursor: pointer;
+            transition: opacity 0.2s ease;
+        }
+
+        .settings-actions button:hover {
+            opacity: 0.85;
+        }
+
+        #saveConfigStatus {
+            font-size: 0.78rem;
+            color: var(--muted);
+        }
+
         @media (max-width: 900px) {
             .main-layout {
                 grid-template-columns: 1fr;
@@ -1219,6 +1335,7 @@
         <div class="sidebar-header">
             <h2>路线规划</h2>
             <p>点击地图构建起点、途经点、终点，并生成交通路线图</p>
+            <button class="settings-btn" id="settingsBtn" type="button" title="模型配置">⚙</button>
         </div>
 
         <div class="coord-cards">
@@ -1267,6 +1384,35 @@
             </div>
         </div>
 
+        <div class="settings-panel" id="settingsPanel" style="display:none">
+            <div class="settings-section">
+                <h4>🤖 路线建议模型 (GLM)</h4>
+                <label>Base URL<input id="guideBaseUrl" type="text"></label>
+                <label>模型 ID<input id="guideModel" type="text"></label>
+                <label>API Key
+                    <div class="key-input-wrap">
+                        <input id="guideKey" type="password">
+                        <button class="eye-btn" data-target="guideKey" type="button">👁</button>
+                    </div>
+                </label>
+            </div>
+            <div class="settings-section">
+                <h4>🔍 点位分析模型 (Grok)</h4>
+                <label>Base URL<input id="pointBaseUrl" type="text"></label>
+                <label>模型 ID<input id="pointModel" type="text"></label>
+                <label>API Key
+                    <div class="key-input-wrap">
+                        <input id="pointKey" type="password">
+                        <button class="eye-btn" data-target="pointKey" type="button">👁</button>
+                    </div>
+                </label>
+            </div>
+            <div class="settings-actions">
+                <button id="saveConfigBtn" type="button">保存配置</button>
+                <span id="saveConfigStatus"></span>
+            </div>
+        </div>
+
     </div>
 </div>
 
@@ -1293,6 +1439,63 @@
         end: { timer: null, requestId: 0, selectedName: '' },
     };
 
+    async function loadConfig() {
+        try {
+            const resp = await fetch('/api/config');
+            if (!resp.ok) return;
+            const data = await resp.json();
+            document.getElementById('guideBaseUrl').value = data.guide.base_url || '';
+            document.getElementById('guideModel').value   = data.guide.model    || '';
+            document.getElementById('guideKey').value     = data.guide.key      || '';
+            document.getElementById('pointBaseUrl').value = data.point.base_url || '';
+            document.getElementById('pointModel').value   = data.point.model    || '';
+            document.getElementById('pointKey').value     = data.point.key      || '';
+        } catch (_) { /* ignore — settings panel shows blank on failure */ }
+    }
+
+    async function saveConfig() {
+        const guideKeyEl = document.getElementById('guideKey');
+        const pointKeyEl = document.getElementById('pointKey');
+        // If the key field still contains the masked value (contains '***'), send empty
+        // string so the backend keeps the existing key
+        const body = {
+            guide: {
+                key:      guideKeyEl.value.includes('*') ? '' : guideKeyEl.value,
+                base_url: document.getElementById('guideBaseUrl').value,
+                model:    document.getElementById('guideModel').value,
+            },
+            point: {
+                key:      pointKeyEl.value.includes('*') ? '' : pointKeyEl.value,
+                base_url: document.getElementById('pointBaseUrl').value,
+                model:    document.getElementById('pointModel').value,
+            },
+        };
+        const status = document.getElementById('saveConfigStatus');
+        status.textContent = '保存中…';
+        try {
+            const resp = await fetch('/api/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+            });
+            if (resp.ok) {
+                const data = await resp.json();
+                // Update key fields with masked values returned from backend
+                document.getElementById('guideKey').value = data.guide.key;
+                document.getElementById('pointKey').value = data.point.key;
+                status.textContent = '✅ 已保存';
+                showToast('配置已保存');
+            } else {
+                status.textContent = '❌ 保存失败';
+                showToast('保存失败');
+            }
+        } catch (_) {
+            status.textContent = '❌ 网络错误';
+            showToast('保存失败');
+        }
+        setTimeout(() => { status.textContent = ''; }, 3000);
+    }
+
     function initMap() {
         map = new AMap.Map('map', {
             zoom: 14,
@@ -1302,6 +1505,7 @@
 
         map.on('click', onMapClick);
         bindEvents();
+        loadConfig();
         bootstrapLocation();
     }
 
@@ -1347,6 +1551,23 @@
                 if (dy < -30 && routeCardCollapsed)  toggleRouteCard();  // 上划 → 展开
             }, { passive: true });
         }());
+
+        // ⚙ 设置面板切换
+        document.getElementById('settingsBtn').addEventListener('click', function () {
+            const panel = document.getElementById('settingsPanel');
+            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+        });
+
+        // 保存配置按钮
+        document.getElementById('saveConfigBtn').addEventListener('click', saveConfig);
+
+        // 👁 API Key 明文切换
+        document.querySelectorAll('.eye-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                const input = document.getElementById(btn.dataset.target);
+                input.type = input.type === 'password' ? 'text' : 'password';
+            });
+        });
     }
 
     function getPointCacheKey(point) {
