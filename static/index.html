@@ -1423,6 +1423,13 @@
         }
     }
 
+    function bindInfoWindowRetry(point, label) {
+        const btn = document.querySelector('.marker-retry-btn');
+        if (btn) {
+            btn.addEventListener('click', () => analyzePoint(point, label));
+        }
+    }
+
     function setMode(mode) {
         currentMode = mode;
         document.querySelectorAll('.mode-btn').forEach((button) => {
@@ -1921,8 +1928,17 @@
             infoWindow.open(map, [point.lng, point.lat]);
             bindInfoWindowActions(cacheKey);
         } catch (err) {
-            infoWindow.setContent(`<div class="error-banner">点位分析失败：${escapeHtml(err.message || '请求失败')}</div>`);
+            infoWindow.setContent(`
+                <div class="marker-analysis">
+                    <div class="marker-analysis-title">点位分析失败</div>
+                    <p>${escapeHtml(err.message || '请求失败')}</p>
+                    <div class="marker-action-row">
+                        <button class="marker-retry-btn" type="button">重新生成</button>
+                    </div>
+                </div>
+            `);
             infoWindow.open(map, [point.lng, point.lat]);
+            bindInfoWindowRetry(point, label);
         }
     }
 
@@ -2091,6 +2107,7 @@
                 strokeOpacity: 0.85,
                 lineJoin: 'round',
                 lineCap: 'round',
+                showDir: true,
                 map: map,
             });
             map.setFitView([routeLine], false, [80, 80, 80, 80]);
