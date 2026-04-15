@@ -4,9 +4,29 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-LLM_API_KEY = os.getenv("LLM_API_KEY", "")
-LLM_MODEL = os.getenv("LLM_MODEL", "glm-5.1")
-LLM_BASE_URL = os.getenv("LLM_BASE_URL", "https://open.bigmodel.cn/api/anthropic")
+_guide_cfg: dict = {
+    "key":      os.getenv("GUIDE_LLM_KEY",      ""),
+    "base_url": os.getenv("GUIDE_LLM_BASE_URL", "https://open.bigmodel.cn/api/anthropic"),
+    "model":    os.getenv("GUIDE_LLM_MODEL",    "glm-5.1"),
+}
+_point_cfg: dict = {
+    "key":      os.getenv("POINT_LLM_KEY",      ""),
+    "base_url": os.getenv("POINT_LLM_BASE_URL", "https://windhub.cc"),
+    "model":    os.getenv("POINT_LLM_MODEL",    "grok-4.20-beta"),
+}
+
+
+def update_guide_cfg(key: str, base_url: str, model: str) -> None:
+    _guide_cfg.update({"key": key, "base_url": base_url, "model": model})
+
+
+def update_point_cfg(key: str, base_url: str, model: str) -> None:
+    _point_cfg.update({"key": key, "base_url": base_url, "model": model})
+
+
+def get_configs() -> tuple[dict, dict]:
+    """Return shallow copies of current guide and point configs."""
+    return dict(_guide_cfg), dict(_point_cfg)
 
 CITY_WALK_PROMPT = """你是一位非常务实的本地出行规划助手，请根据真实路线信息生成可执行的路线建议。
 
@@ -166,14 +186,14 @@ async def generate_city_walk_guide(
 
     async with httpx.AsyncClient() as client:
         resp = await client.post(
-            f"{LLM_BASE_URL}/v1/messages",
+            f"{_guide_cfg['base_url']}/v1/messages",
             headers={
-                "x-api-key": LLM_API_KEY,
+                "x-api-key": _guide_cfg["key"],
                 "anthropic-version": "2023-06-01",
                 "content-type": "application/json",
             },
             json={
-                "model": LLM_MODEL,
+                "model": _guide_cfg["model"],
                 "max_tokens": 1024,
                 "messages": [{"role": "user", "content": prompt}],
             },
@@ -226,14 +246,13 @@ async def generate_point_analysis(
 
     async with httpx.AsyncClient() as client:
         resp = await client.post(
-            f"{LLM_BASE_URL}/v1/messages",
+            f"{_point_cfg['base_url']}/v1/chat/completions",
             headers={
-                "x-api-key": LLM_API_KEY,
-                "anthropic-version": "2023-06-01",
-                "content-type": "application/json",
+                "Authorization": f"Bearer {_point_cfg['key']}",
+                "Content-Type": "application/json",
             },
             json={
-                "model": LLM_MODEL,
+                "model": _point_cfg["model"],
                 "max_tokens": 512,
                 "messages": [{"role": "user", "content": prompt}],
             },
@@ -241,4 +260,4 @@ async def generate_point_analysis(
         )
         resp.raise_for_status()
         data = resp.json()
-        return data["content"][0]["text"]
+        return data["choices"][0]["message"]["content"]
