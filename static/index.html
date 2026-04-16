@@ -1713,7 +1713,7 @@
             </div>
             <div class="map-search-results" id="mapSearchResults"></div>
         </div>
-        <div class="route-floating-card" id="routeFloatingCard">
+        <div class="route-floating-card collapsed" id="routeFloatingCard">
             <div class="route-card-header">
                 <span class="route-card-title">路线摘要</span>
                 <div class="route-card-summary" id="routeCardSummary" aria-live="polite"></div>
@@ -2872,7 +2872,7 @@
     }
 
     // ── 路线卡折叠状态（模块级，路线刷新不重置）──
-    let routeCardCollapsed = false;
+    let routeCardCollapsed = true;
 
     function toggleRouteCard() {
         routeCardCollapsed = !routeCardCollapsed;
