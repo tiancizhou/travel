@@ -1609,6 +1609,19 @@
             .amap-info-content          { max-width: calc(100vw - 32px) !important; }
             .marker-analysis,
             .marker-preview             { max-width: calc(100vw - 48px); }
+
+            /* 整个弹窗高度不超过视口的 40%，内容可滚动 */
+            .marker-analysis {
+                max-height: 40dvh;
+                max-height: 40vh;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            /* 展开态：body 高度跟随弹窗容器，而非固定 800px */
+            .marker-analysis-body.expanded {
+                max-height: none;
+            }
         }
 
         @keyframes fadeInUp {
