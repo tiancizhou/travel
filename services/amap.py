@@ -143,7 +143,7 @@ def parse_transit_route(
             departure_stop = (line.get("departure_stop") or {}).get("name", "")
             arrival_stop = (line.get("arrival_stop") or {}).get("name", "")
             polyline = line.get("polyline", "")
-            if via_num:
+            if via_num and int(via_num) > 0:
                 summary_parts.append(f"{name} {via_num}站")
                 detail = f"乘坐{name}，经过{via_num}站"
             else:
