@@ -17,7 +17,6 @@ from models.query import (
 )
 from services.amap import (
     get_route,
-    get_route_with_waypoints,
     reverse_geocode,
     analyze_point_context,
     get_adcode,
@@ -88,7 +87,6 @@ async def index():
 async def create_plan(req: PlanRequest):
     origin = f"{req.start_lng},{req.start_lat}"
     destination = f"{req.end_lng},{req.end_lat}"
-    waypoint_strings = [f"{pt.lng},{pt.lat}" for pt in req.waypoints]
     transit_summary = None
     transit_steps = None
     adcode = ""
@@ -105,11 +103,10 @@ async def create_plan(req: PlanRequest):
             points,
             transit_summary,
             transit_steps,
-        ) = await get_route_with_waypoints(
+        ) = await get_route(
             req.mode,
             origin,
             destination,
-            waypoint_strings,
             city=adcode,
         )
     except Exception as e:

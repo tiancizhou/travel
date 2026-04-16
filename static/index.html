@@ -2114,7 +2114,7 @@
                 <button class="waypoint-clear" id="clearWaypointsBtn" type="button">清空途经点</button>
             </div>
             <div class="waypoint-list" id="waypointList">
-                <div class="waypoint-meta">设好起终点后，点击地图任意位置可添加途经点。</div>
+                <div class="waypoint-meta">点击地图添加途经点，点击标记查看景点分析。</div>
             </div>
         </div>
 
@@ -3092,7 +3092,6 @@
         waypointMarkers.push(marker);
         bindMarkerAnalysis(marker, waypoint, `途经点${index}`);
         renderWaypointList();
-        triggerRouteRefresh();
     }
 
     function clearWaypoints() {
@@ -3100,7 +3099,6 @@
         waypointMarkers = [];
         waypointCoords = [];
         renderWaypointList();
-        triggerRouteRefresh();
     }
 
     function removeWaypoint(index) {
@@ -3121,7 +3119,6 @@
             }
         });
         renderWaypointList();
-        triggerRouteRefresh();
     }
 
     function renderWaypointList() {
@@ -3434,7 +3431,6 @@
                     end_lng: endCoord.lng,
                     end_lat: endCoord.lat,
                     mode: currentMode,
-                    waypoints: waypointCoords.map((point) => ({ lng: point.lng, lat: point.lat, label: point.name || '' })),
                 }),
             });
 
