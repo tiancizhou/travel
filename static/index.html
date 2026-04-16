@@ -2884,12 +2884,7 @@
     }
 
     function updatePlanButton() {
-        const resultArea = document.getElementById('resultArea');
-        if (startCoord && endCoord) {
-            resultArea.innerHTML = '<div class="empty-state"><div class="icon">🧭</div><p>路线将根据点位变化自动刷新。</p></div>';
-            return;
-        }
-        resultArea.innerHTML = '<div class="empty-state"><div class="icon">🗺️</div><p>请先设置起点和终点；之后途经点变化会自动刷新路线图。</p></div>';
+        // plan button removed; auto-plans on point changes
     }
 
     async function addWaypoint(point) {
@@ -3098,6 +3093,7 @@
 
     function handleSearchInput(kind) {
         const input = document.getElementById(`${kind}-input`);
+        if (!input) return;
         const keyword = input.value.trim();
         searchState[kind].selectedName = '';
         clearTimeout(searchState[kind].timer);
@@ -3167,8 +3163,10 @@
 
     function hidePanel(kind) {
         const panel = document.getElementById(`${kind}-panel`);
-        panel.classList.remove('show');
-        panel.innerHTML = '';
+        if (panel) {
+            panel.classList.remove('show');
+            panel.innerHTML = '';
+        }
     }
 
     function escapeHtml(value) {
