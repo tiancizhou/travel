@@ -46,10 +46,19 @@ class PointAnalysisRequest(BaseModel):
     label: str = ""
 
 
+class LandmarkItem(BaseModel):
+    name: str
+    desc: str = ""
+
+
 class PointAnalysisResponse(BaseModel):
     name: str
     analysis: str
     nearby_landmarks: list[str]
+    verdict: str = ""
+    reason: str = ""
+    landmarks_structured: list[LandmarkItem] = []
+    transit: str = ""
 
 
 class HistoryItem(BaseModel):

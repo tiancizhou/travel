@@ -156,9 +156,8 @@ async def analyze_point(req: PointAnalysisRequest):
     # 第一阶段：Grok 搜索提炼（失败则降级为 None）
     research = await generate_point_research(label=label, lng=req.lng, lat=req.lat)
 
-    # 第二阶段：GLM 分析总结（有 research 则用增强版 prompt，否则用 fallback）
     try:
-        analysis = await generate_point_analysis(
+        result = await generate_point_analysis(
             label=label,
             lng=req.lng,
             lat=req.lat,
@@ -170,8 +169,12 @@ async def analyze_point(req: PointAnalysisRequest):
 
     return PointAnalysisResponse(
         name=name,
-        analysis=analysis,
+        analysis=result.get("raw", ""),
         nearby_landmarks=[p.get("name", "") for p in landmarks[:6] if p.get("name")],
+        verdict=result.get("verdict", ""),
+        reason=result.get("reason", ""),
+        landmarks_structured=result.get("landmarks", []),
+        transit=result.get("transit", ""),
     )
 
 
