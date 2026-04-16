@@ -1487,11 +1487,11 @@
                 position: fixed;
                 left: 10px;
                 right: 10px;
-                bottom: calc(var(--sheet-h, 200px) + 8px);
+                bottom: calc(var(--sheet-h, 130px) + 8px);
                 width: auto;
                 z-index: 210;
-                max-height: calc(100dvh - var(--sheet-h, 200px) - 80px);
-                max-height: calc(100vh  - var(--sheet-h, 200px) - 80px);
+                max-height: calc(100dvh - var(--sheet-h, 130px) - 80px);
+                max-height: calc(100vh  - var(--sheet-h, 130px) - 80px);
                 overflow-y: auto;
                 transition: bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             }
@@ -1502,13 +1502,13 @@
                 bottom: 0;
                 left: 0;
                 right: 0;
-                height: var(--sheet-h, 200px);
+                height: var(--sheet-h, 130px);
                 max-height: 88dvh;
                 max-height: 88vh;
-                border-radius: 20px 20px 0 0;
+                border-radius: 16px 16px 0 0;
                 border-left: none;
                 border-top: none;
-                box-shadow: 0 -4px 32px rgba(0,0,0,0.18);
+                box-shadow: 0 -2px 20px rgba(0,0,0,0.12);
                 z-index: 200;
                 overflow: hidden;
                 display: flex;
@@ -1527,7 +1527,7 @@
                 display: flex;
                 justify-content: center;
                 align-items: center;
-                height: 20px;
+                height: 16px;
                 flex-shrink: 0;
                 cursor: pointer;
                 touch-action: none;
@@ -1535,25 +1535,42 @@
 
             .mobile-sheet-handle::before {
                 content: '';
-                width: 40px;
+                width: 32px;
                 height: 4px;
-                background: rgba(138,133,120,0.35);
+                background: rgba(138,133,120,0.3);
                 border-radius: 2px;
             }
 
-            /* ══ Sidebar header：可点击，作为展开触发区 ══ */
+            /* ══ Sidebar header：折叠态隐藏 ══ */
             .sidebar-header {
+                display: none;
+            }
+            .sidebar.sheet-expanded .sidebar-header {
+                display: flex;
                 padding: 4px 16px 10px;
                 border-bottom: 1px solid rgba(138,133,120,0.1);
                 flex-shrink: 0;
                 cursor: pointer;
                 user-select: none;
             }
-
             .sidebar-header h2 { font-size: 1rem; }
             .sidebar-header p  { display: none; }
 
-            /* ══ Sidebar 内容区可滚动 ══ */
+            /* ══ 折叠态只显示起终点输入 ══ */
+            .sidebar:not(.sheet-expanded) .sidebar-scroll {
+                overflow: visible;
+            }
+            .sidebar:not(.sheet-expanded) .mode-switcher,
+            .sidebar:not(.sheet-expanded) .mobile-mode-toggle,
+            .sidebar:not(.sheet-expanded) .waypoint-section,
+            .sidebar:not(.sheet-expanded) .result-area,
+            .sidebar:not(.sheet-expanded) .settings-panel,
+            .sidebar:not(.sheet-expanded) .geolocation-btn,
+            .sidebar:not(.sheet-expanded) .location-status {
+                display: none;
+            }
+
+            /* ═─ Sidebar 内容区可滚动 ══ */
             .sidebar-scroll {
                 flex: 1;
                 overflow-y: auto;
@@ -1563,8 +1580,8 @@
             }
 
             /* ══ 紧凑间距 ══ */
-            .coord-cards          { padding: 12px 14px; gap: 10px; }
-            .coord-card           { padding: 10px 12px; }
+            .coord-cards          { padding: 6px 12px; gap: 6px; }
+            .coord-card           { padding: 6px 10px; }
             .location-status      { padding: 0 14px 6px; font-size: 0.78rem; }
             .waypoint-section     { padding: 0 14px 10px; }
             .plan-btn             { margin: 0 14px 12px; }
@@ -1610,7 +1627,7 @@
                 display: flex;
                 position: fixed;
                 right: 12px;
-                bottom: calc(var(--sheet-h, 200px) + 12px);
+                bottom: calc(var(--sheet-h, 130px) + 12px);
                 width: 48px;
                 height: 48px;
                 border-radius: 50%;
@@ -2038,7 +2055,7 @@
      */
     function syncSheetHeight(sidebar, expanded) {
         if (window.innerWidth > 768) return;
-        const h = expanded ? Math.round(window.innerHeight * 0.88) : 200;
+        const h = expanded ? Math.round(window.innerHeight * 0.88) : 130;
         document.documentElement.style.setProperty('--sheet-h', h + 'px');
     }
 
@@ -2114,7 +2131,7 @@
 
         let startY = 0;
         let startH = 0;
-        const COLLAPSED_H = 200;
+        const COLLAPSED_H = 130;
         const EXPANDED_H  = Math.round(window.innerHeight * 0.88);
 
         handle.addEventListener('touchstart', function (e) {
