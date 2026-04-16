@@ -1041,6 +1041,84 @@
             font-size: 0.74rem;
         }
 
+        /* ── 自定义地图标记 ── */
+        .custom-marker {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .custom-marker-pin {
+            width: 36px;
+            height: 36px;
+            border-radius: 50% 50% 50% 4px;
+            transform: rotate(-45deg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.25);
+            position: relative;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+        .custom-marker:active .custom-marker-pin {
+            transform: rotate(-45deg) scale(0.9);
+            box-shadow: 0 1px 6px rgba(0,0,0,0.2);
+        }
+        .custom-marker-pin-inner {
+            transform: rotate(45deg);
+            font-size: 15px;
+            line-height: 1;
+        }
+        /* 起点：深绿 */
+        .custom-marker.start .custom-marker-pin {
+            background: var(--forest);
+        }
+        /* 终点：深棕红 */
+        .custom-marker.end .custom-marker-pin {
+            background: #9b3a2a;
+        }
+        /* 途经点：琥珀橙 */
+        .custom-marker.waypoint .custom-marker-pin {
+            background: #b06e2a;
+        }
+        /* 已分析：绿色发光 */
+        .custom-marker.analyzed .custom-marker-pin {
+            box-shadow: 0 3px 10px rgba(0,0,0,0.2), 0 0 0 3px rgba(74,111,82,0.25);
+        }
+        /* 分析中：脉冲 */
+        .custom-marker.analyzing .custom-marker-pin {
+            animation: pinPulse 1s ease-in-out infinite;
+        }
+        @keyframes pinPulse {
+            0%, 100% { box-shadow: 0 3px 10px rgba(0,0,0,0.25); }
+            50%       { box-shadow: 0 3px 10px rgba(0,0,0,0.15), 0 0 0 5px rgba(74,111,82,0.2); }
+        }
+        /* 标记序号/文字徽章 */
+        .custom-marker-label {
+            margin-top: 4px;
+            background: rgba(255,255,255,0.92);
+            backdrop-filter: blur(4px);
+            border-radius: 6px;
+            padding: 1px 6px;
+            font-size: 0.68rem;
+            font-weight: 700;
+            color: var(--forest);
+            white-space: nowrap;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+            max-width: 90px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .custom-marker.analyzed .custom-marker-label::after {
+            content: ' ★';
+            color: #e8a030;
+        }
+        .custom-marker.analyzing .custom-marker-label::after {
+            content: ' ⏳';
+        }
+
         .marker-preview,
         .marker-analysis {
             width: 260px;
@@ -1361,6 +1439,31 @@
             visibility: visible;
             pointer-events: auto;
         }
+        /* header 行：标题 + 关闭按钮 */
+        .marker-analysis-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 6px;
+            margin-bottom: 2px;
+        }
+        .marker-analysis-header .marker-analysis-title {
+            margin-bottom: 0;
+            flex: 1;
+            min-width: 0;
+        }
+        .tooltip-close-btn {
+            flex-shrink: 0;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--muted);
+            font-size: 0.85rem;
+            padding: 0 2px;
+            line-height: 1.4;
+            transition: color 0.15s;
+        }
+        .tooltip-close-btn:hover { color: #374151; }
         /* tooltip 内卡片无折叠限制，完整展示 */
         .analysis-tooltip .marker-analysis-body {
             max-height: none !important;
@@ -2315,17 +2418,50 @@
         `;
     }
 
-    function markMarkerAnalyzed(marker) {
-        const currentLabel = marker.getLabel && marker.getLabel();
-        const content = currentLabel && currentLabel.content ? String(currentLabel.content).replace('★', '') : '';
-        if (marker.setLabel) {
-            marker.setLabel({ content: `${content}★`, direction: 'top' });
-        }
+    // ── 自定义标记 HTML ────────────────────────────────────────────────────
+    function makeMarkerContent(kind, labelText) {
+        // kind: 'start' | 'end' | 'waypoint'
+        const icon = kind === 'start' ? '🚩' : kind === 'end' ? '🏁' : '📍';
+        return `<div class="custom-marker ${kind}">
+            <div class="custom-marker-pin">
+                <span class="custom-marker-pin-inner">${icon}</span>
+            </div>
+            <div class="custom-marker-label">${labelText}</div>
+        </div>`;
+    }
+
+    function makeMarker(kind, lngLat, labelText) {
+        return new AMap.Marker({
+            position: [lngLat.lng, lngLat.lat],
+            content: makeMarkerContent(kind, labelText),
+            offset: new AMap.Pixel(-18, -42),
+            map,
+        });
+    }
+
+    function setMarkerState(marker, state) {
+        // state: 'analyzing' | 'analyzed' | 'normal'
+        const el = marker.getContent && marker.getContent();
+        if (!el) return;
+        const pin = typeof el === 'string' ? null : el.querySelector && el.querySelector('.custom-marker');
+        // AMap 2.0 content 可能是 DOM 元素，也可能已挂载
+        // 通过 marker 的 DOM 元素操作
+        const dom = marker.dom || (marker.getElement && marker.getElement());
+        if (!dom) return;
+        const cm = dom.querySelector('.custom-marker');
+        if (!cm) return;
+        cm.classList.remove('analyzing', 'analyzed');
+        if (state !== 'normal') cm.classList.add(state);
+    }
+
+    function getMarkerEl(marker) {
+        return marker.dom || (marker.getElement && marker.getElement());
     }
 
     function renderMarkerAnalysis(data, cacheKey) {
         const titleText = escapeHtml(data.name || data.label || '点位分析');
         const metaText  = escapeHtml(data.label && data.label !== data.name ? data.label : '');
+        const closeBtn  = `<button class="tooltip-close-btn" type="button" aria-label="关闭">✕</button>`;
 
         // 有结构化数据时渲染卡片
         if (data.verdict) {
@@ -2338,7 +2474,10 @@
 
             return `
                 <div class="marker-analysis">
-                    <div class="marker-analysis-title">${titleText}</div>
+                    <div class="marker-analysis-header">
+                        <div class="marker-analysis-title">${titleText}</div>
+                        ${closeBtn}
+                    </div>
                     ${metaText ? `<div class="marker-analysis-meta">${metaText}</div>` : ''}
                     <div class="marker-analysis-body">
                         <div class="marker-section">
@@ -2358,7 +2497,6 @@
                             <div class="marker-section-text">${escapeHtml(data.transit)}</div>
                         </div>` : ''}
                     </div>
-                    <button class="marker-expand-btn" type="button">展开全文</button>
                     <div class="marker-action-row">
                         <button class="marker-delete-btn" data-delete-cache-key="${escapeHtml(cacheKey)}" type="button">删除该点</button>
                     </div>
@@ -2370,12 +2508,14 @@
         const analysisText = escapeHtml(data.analysis || '暂无分析结果。').replace(/\n/g, '<br>');
         return `
             <div class="marker-analysis">
-                <div class="marker-analysis-title">${titleText}</div>
+                <div class="marker-analysis-header">
+                    <div class="marker-analysis-title">${titleText}</div>
+                    ${closeBtn}
+                </div>
                 ${metaText ? `<div class="marker-analysis-meta">${metaText}</div>` : ''}
                 <div class="marker-analysis-body">
                     <p>${analysisText}</p>
                 </div>
-                <button class="marker-expand-btn" type="button">展开全文</button>
                 <div class="marker-action-row">
                     <button class="marker-delete-btn" data-delete-cache-key="${escapeHtml(cacheKey)}" type="button">删除该点</button>
                 </div>
@@ -2743,6 +2883,13 @@
         const lng = Number(e.lnglat.getLng().toFixed(6));
         const lat = Number(e.lnglat.getLat().toFixed(6));
 
+        // 若分析 tooltip 显示中，点击地图任意处关闭它
+        const tooltip = document.getElementById('analysisTooltip');
+        if (tooltip.classList.contains('visible')) {
+            hideAnalysisTooltip();
+            return;
+        }
+
         if (!startCoord) {
             await setPoint('start', { lng, lat });
             return;
@@ -2752,7 +2899,7 @@
             return;
         }
 
-        // 起终点都已设置：如果气泡正在显示则先关闭（本次点击视为关闭操作）
+        // 起终点都已设置：如果途经点气泡显示中则关闭
         const bubble = document.getElementById('waypointConfirmBubble');
         if (bubble.classList.contains('visible')) {
             hideWaypointBubble();
@@ -2767,11 +2914,9 @@
 
     async function setPoint(kind, point) {
         const name = point.name || await reverseGeocode(point.lng, point.lat);
-        const marker = new AMap.Marker({
-            position: [point.lng, point.lat],
-            label: { content: kind === 'start' ? '起' : '终', direction: 'top' },
-            map,
-        });
+        const shortName = name.length > 8 ? name.slice(0, 7) + '…' : name;
+        const labelText = kind === 'start' ? `起·${shortName}` : `终·${shortName}`;
+        const marker = makeMarker(kind, point, labelText);
 
         if (kind === 'start') {
             if (startMarker) startMarker.setMap(null);
@@ -2842,11 +2987,8 @@
     async function addWaypoint(point) {
         const name = point.name || await reverseGeocode(point.lng, point.lat);
         const index = waypointCoords.length + 1;
-        const marker = new AMap.Marker({
-            position: [point.lng, point.lat],
-            label: { content: `${index}`, direction: 'top' },
-            map,
-        });
+        const shortName = name.length > 6 ? name.slice(0, 5) + '…' : name;
+        const marker = makeMarker('waypoint', point, `${index}·${shortName}`);
         const waypoint = { lng: point.lng, lat: point.lat, name };
         waypointCoords.push(waypoint);
         waypointMarkers.push(marker);
@@ -2868,8 +3010,17 @@
         if (marker) marker.setMap(null);
         waypointMarkers.splice(index, 1);
         waypointCoords.splice(index, 1);
-        waypointMarkers.forEach((marker, idx) => {
-            marker.setLabel({ content: `${idx + 1}`, direction: 'top' });
+        // 重新编号剩余途经点标记
+        waypointMarkers.forEach((m, idx) => {
+            const dom = getMarkerEl(m);
+            if (dom) {
+                const labelEl = dom.querySelector('.custom-marker-label');
+                if (labelEl) {
+                    const cur = labelEl.textContent || '';
+                    // 替换首位数字+点
+                    labelEl.textContent = cur.replace(/^\d+·/, `${idx + 1}·`);
+                }
+            }
         });
         renderWaypointList();
         triggerRouteRefresh();
@@ -2972,6 +3123,14 @@
 
     function bindTooltipActions(cacheKey) {
         const tooltip = document.getElementById('analysisTooltip');
+        // 关闭按钮
+        const closeBtn = tooltip.querySelector('.tooltip-close-btn');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                hideAnalysisTooltip();
+            });
+        }
         // 删除按钮
         const delBtn = tooltip.querySelector('[data-delete-cache-key]');
         if (delBtn) {
@@ -2999,12 +3158,8 @@
         }
         _analyzingKeys.add(cacheKey);
 
-        // 标记正在分析状态
-        const origLabel = marker.getLabel && marker.getLabel();
-        const origContent = origLabel && origLabel.content ? origLabel.content : '';
-        if (marker.setLabel) {
-            marker.setLabel({ content: origContent + '⏳', direction: 'top' });
-        }
+        // 标记进入分析状态
+        setMarkerState(marker, 'analyzing');
         showToast('正在分析点位...');
 
         try {
@@ -3023,30 +3178,16 @@
                 label: label || data.name || '点位分析',
             };
             pointAnalysisCache[cacheKey] = payload;
-            if (startCoord && point.lng === startCoord.lng && point.lat === startCoord.lat && startMarker) {
-                markMarkerAnalyzed(startMarker);
-            }
-            if (endCoord && point.lng === endCoord.lng && point.lat === endCoord.lat && endMarker) {
-                markMarkerAnalyzed(endMarker);
-            }
-            waypointCoords.forEach((waypoint, index) => {
-                if (point.lng === waypoint.lng && point.lat === waypoint.lat && waypointMarkers[index]) {
-                    markMarkerAnalyzed(waypointMarkers[index]);
-                }
-            });
-            showToast('分析完成，悬停标记查看结果');
+            // 标记为已分析
+            setMarkerState(marker, 'analyzed');
+            showToast('分析完成，点击标记查看结果');
             // 分析完成后立即显示 tooltip
             showAnalysisTooltip(marker, point, payload, cacheKey);
         } catch (err) {
+            setMarkerState(marker, 'normal');
             showToast('分析失败：' + (err.message || '请求失败'));
         } finally {
             _analyzingKeys.delete(cacheKey);
-            // 恢复标记 label（移除 ⏳）
-            if (marker.setLabel) {
-                const cur = marker.getLabel && marker.getLabel();
-                const txt = cur && cur.content ? cur.content.replace('⏳', '') : origContent;
-                marker.setLabel({ content: txt, direction: 'top' });
-            }
         }
     }
 
