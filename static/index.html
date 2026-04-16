@@ -2071,42 +2071,15 @@
         </div>
 
         <div class="sidebar-header">
-            <h2>路线规划</h2>
+            <h2>路线详情</h2>
         </div>
 
         <div class="sidebar-scroll">
 
-        <div class="coord-cards">
-            <div class="coord-card" id="card-start">
-                <label>
-                    起点
-                    <button class="clear-btn" id="clear-start" type="button">×</button>
-                </label>
-                <div class="search-hint" id="start-hint">点击地图设置起点</div>
-            </div>
-            <div class="coord-card" id="card-end">
-                <label>
-                    终点
-                    <button class="clear-btn" id="clear-end" type="button">×</button>
-                </label>
-                <div class="search-hint" id="end-hint">点击地图设置终点</div>
-            </div>
-        </div>
-
-        <div class="waypoint-section">
-            <div class="waypoint-header">
-                <h3>途经点</h3>
-                <button class="waypoint-clear" id="clearWaypointsBtn" type="button">清空</button>
-            </div>
-            <div class="waypoint-list" id="waypointList">
-                <div class="waypoint-meta">点击地图添加途经点，点击标记查看景点分析。</div>
-            </div>
-        </div>
-
         <div class="result-area" id="resultArea">
             <div class="empty-state">
                 <div class="icon">🗺️</div>
-                <p>设置起点和终点后自动生成路线</p>
+                <p>点击地图设置起终点后自动规划路线</p>
             </div>
         </div>
 
@@ -2211,12 +2184,6 @@
                 if (dy < -30 && routeCardCollapsed)  toggleRouteCard();  // 上划 → 展开
             }, { passive: true });
         }());
-
-        // 清空起终点按钮
-        document.getElementById('clear-start').addEventListener('click', () => clearPoint('start'));
-        document.getElementById('clear-end').addEventListener('click', () => clearPoint('end'));
-        // 清空途经点
-        document.getElementById('clearWaypointsBtn').addEventListener('click', clearWaypoints);
 
         // ── 移动端底部抽屉 ──
         const mobileHandle = document.getElementById('mobileSheetHandle');
@@ -2515,14 +2482,10 @@
     }
 
     function onDocumentClick(event) {
-        const startCard = document.getElementById('card-start');
-        const endCard = document.getElementById('card-end');
         const mapSearchShell = document.querySelector('.map-search-shell');
-        if (!startCard.contains(event.target)) hidePanel('start');
-        if (!endCard.contains(event.target)) hidePanel('end');
         if (mapSearchShell && !mapSearchShell.contains(event.target)) {
             const results = document.getElementById('mapSearchResults');
-            results.classList.remove('show');
+            if (results) results.classList.remove('show');
         }
     }
 
@@ -2897,18 +2860,7 @@
     }
 
     function updatePointUI(kind) {
-        const point = kind === 'start' ? startCoord : endCoord;
-        const hint = document.getElementById(`${kind}-hint`);
-        const card = document.getElementById(`card-${kind}`);
-
-        if (!point) {
-            hint.textContent = kind === 'start' ? '点击地图设置起点' : '点击地图设置终点';
-            card.classList.remove('has-value');
-            return;
-        }
-
-        hint.textContent = point.name || `${point.lng.toFixed(6)}, ${point.lat.toFixed(6)}`;
-        card.classList.add('has-value');
+        // 起终点信息现在只通过地图标记显示
     }
 
     function clearPoint(kind) {
@@ -2980,24 +2932,7 @@
     }
 
     function renderWaypointList() {
-        const container = document.getElementById('waypointList');
-        if (!waypointCoords.length) {
-            container.innerHTML = '<div class="waypoint-meta">第三次点击地图后，会按顺序加入途经点。</div>';
-            return;
-        }
-        container.innerHTML = waypointCoords.map((point, index) => `
-            <div class="waypoint-item">
-                <div class="waypoint-badge">${index + 1}</div>
-                <div class="waypoint-info">
-                    <div class="waypoint-name">${escapeHtml(point.name || '未命名途经点')}</div>
-                    <div class="waypoint-meta">${point.lng.toFixed(6)}, ${point.lat.toFixed(6)}</div>
-                </div>
-                <button class="waypoint-remove" data-waypoint-index="${index}" type="button">×</button>
-            </div>
-        `).join('');
-        container.querySelectorAll('[data-waypoint-index]').forEach((button) => {
-            button.addEventListener('click', () => removeWaypoint(Number(button.dataset.waypointIndex)));
-        });
+        // 途经点列表已移至地图标记，此处为空操作
     }
 
     function bindMarkerAnalysis(marker, point, label) {
