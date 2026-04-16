@@ -1539,6 +1539,168 @@
             .amap-geolocation-con {
                 top: max(60px, calc(env(safe-area-inset-top) + 56px)) !important;
             }
+
+            /* ════════════════════════════════════════
+               修复 1: iOS 输入框缩放 — 所有 input ≥ 16px
+            ════════════════════════════════════════ */
+            input, textarea, select {
+                font-size: 16px !important;
+            }
+
+            .coord-card .search-input {
+                font-size: 16px;
+            }
+
+            .map-search-input {
+                font-size: 16px;
+            }
+
+            /* ════════════════════════════════════════
+               修复 2: 触摸目标 ≥ 44px
+            ════════════════════════════════════════ */
+            .mode-btn {
+                min-height: 44px;
+                padding: 10px 16px;
+                font-size: 0.9rem;
+            }
+
+            .geolocation-btn {
+                min-height: 44px;
+                font-size: 0.88rem;
+            }
+
+            .plan-btn {
+                min-height: 52px;
+                font-size: 1rem;
+            }
+
+            .map-search-btn,
+            .map-nearby-btn {
+                min-height: 44px;
+                padding: 0 14px;
+                white-space: nowrap;
+            }
+
+            .result-action {
+                min-height: 40px;
+            }
+
+            .waypoint-remove {
+                width: 36px;
+                height: 36px;
+            }
+
+            .clear-btn {
+                width: 24px;
+                height: 24px;
+            }
+
+            /* ════════════════════════════════════════
+               修复 3: 地图说明框 — 移动端默认隐藏，
+               可点击左上角小按钮展开
+            ════════════════════════════════════════ */
+            .map-overlay {
+                top: max(58px, calc(env(safe-area-inset-top) + 48px));
+                left: 10px;
+                padding: 0;
+                width: 36px;
+                height: 36px;
+                border-radius: 50%;
+                overflow: hidden;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: width 0.25s ease, height 0.25s ease, border-radius 0.25s ease, padding 0.25s ease;
+            }
+
+            .map-overlay h3,
+            .map-overlay .step-list {
+                display: none;
+            }
+
+            .map-overlay::after {
+                content: '?';
+                font-size: 1rem;
+                font-weight: 700;
+                color: var(--forest);
+            }
+
+            .map-overlay.expanded {
+                width: calc(100vw - 20px);
+                height: auto;
+                border-radius: 12px;
+                padding: 12px 14px;
+            }
+
+            .map-overlay.expanded h3,
+            .map-overlay.expanded .step-list {
+                display: block;
+            }
+
+            .map-overlay.expanded::after {
+                display: none;
+            }
+
+            /* ════════════════════════════════════════
+               修复 4: 搜索栏全宽，说明框下方
+            ════════════════════════════════════════ */
+            .map-search-shell {
+                top: max(102px, calc(env(safe-area-inset-top) + 92px));
+                left: 10px;
+                right: 10px;
+                width: auto;
+            }
+
+            /* ════════════════════════════════════════
+               修复 5: autocomplete z-index 高于 sidebar
+            ════════════════════════════════════════ */
+            .autocomplete-panel {
+                z-index: 9000;
+                max-height: 180px;
+            }
+
+            /* ════════════════════════════════════════
+               修复 6: 底部安全区 — 内容不被 home bar 遮
+            ════════════════════════════════════════ */
+            .sidebar-scroll {
+                padding-bottom: max(16px, env(safe-area-inset-bottom));
+            }
+
+            /* ════════════════════════════════════════
+               修复 7: 搜索结果列表在移动端更大间距
+            ════════════════════════════════════════ */
+            .search-result-item {
+                padding: 14px 16px;
+            }
+
+            .ac-item {
+                padding: 14px 16px;
+                font-size: 0.9rem;
+            }
+
+            /* ════════════════════════════════════════
+               修复 8: 途经点 & 设置 label 字号
+            ════════════════════════════════════════ */
+            .coord-card label {
+                font-size: 0.78rem;
+            }
+
+            .waypoint-name {
+                font-size: 0.88rem;
+            }
+
+            /* ════════════════════════════════════════
+               修复 9: info window 不超屏宽
+            ════════════════════════════════════════ */
+            .amap-info-content {
+                max-width: calc(100vw - 32px) !important;
+            }
+
+            .marker-analysis,
+            .marker-preview {
+                max-width: calc(100vw - 48px);
+            }
         }
 
         @keyframes fadeInUp {
@@ -1887,6 +2049,61 @@
         const sidebar = document.getElementById('sidebar');
         if (!sidebar) return;
         syncSheetHeight(sidebar, sidebar.classList.contains('sheet-expanded'));
+        initOverlayToggle();
+        initSheetDrag(sidebar);
+    }
+
+    /** 移动端地图说明框：点击 ? 展开/收起 */
+    function initOverlayToggle() {
+        if (window.innerWidth > 768) return;
+        const overlay = document.querySelector('.map-overlay');
+        if (!overlay) return;
+        overlay.addEventListener('click', function (e) {
+            overlay.classList.toggle('expanded');
+            // 展开后 3 秒自动收起
+            if (overlay.classList.contains('expanded')) {
+                clearTimeout(overlay._closeTimer);
+                overlay._closeTimer = setTimeout(function () {
+                    overlay.classList.remove('expanded');
+                }, 3000);
+            }
+        });
+    }
+
+    /** 移动端底部抽屉 touch drag */
+    function initSheetDrag(sidebar) {
+        if (window.innerWidth > 768) return;
+        const handle = document.getElementById('mobileSheetHandle');
+        if (!handle) return;
+
+        let startY = 0;
+        let startH = 0;
+        const COLLAPSED_H = 264;
+        const EXPANDED_H  = Math.round(window.innerHeight * 0.85);
+
+        handle.addEventListener('touchstart', function (e) {
+            startY = e.touches[0].clientY;
+            startH = sidebar.getBoundingClientRect().height;
+            sidebar.style.transition = 'none';
+        }, { passive: true });
+
+        handle.addEventListener('touchmove', function (e) {
+            const dy   = startY - e.touches[0].clientY; // positive = drag up
+            const newH = Math.min(EXPANDED_H, Math.max(80, startH + dy));
+            sidebar.style.height = newH + 'px';
+            document.documentElement.style.setProperty('--sheet-h', newH + 'px');
+        }, { passive: true });
+
+        handle.addEventListener('touchend', function (e) {
+            sidebar.style.transition = '';
+            const curH    = sidebar.getBoundingClientRect().height;
+            const midH    = (COLLAPSED_H + EXPANDED_H) / 2;
+            const expanded = curH > midH;
+            sidebar.classList.toggle('sheet-expanded', expanded);
+            syncSheetHeight(sidebar, expanded);
+            // 恢复由 CSS 变量控制的高度
+            sidebar.style.height = '';
+        });
     }
 
     function getPointCacheKey(point) {
