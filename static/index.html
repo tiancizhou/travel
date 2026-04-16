@@ -2008,6 +2008,7 @@
     let currentMode = 'walking';
     let searchMarkers = [];
     let pointAnalysisCache = {};
+    let _analyzingKeys = new Set();  // 正在分析中的 cacheKey 集合，防止重复请求
     let hoverPreviewTimer = null;  // kept for backward compat
     const searchState = {
         start: { timer: null, requestId: 0, selectedName: '' },
@@ -2901,6 +2902,12 @@
             const cacheKey = getPointCacheKey(point);
             const tooltip = document.getElementById('analysisTooltip');
 
+            // 正在分析中：忽略重复点击
+            if (_analyzingKeys.has(cacheKey)) {
+                showToast('正在分析中，请稍候...');
+                return;
+            }
+
             // 已有缓存：toggle tooltip
             if (pointAnalysisCache[cacheKey]) {
                 if (tooltip.classList.contains('visible') && tooltip.dataset.key === cacheKey) {
@@ -2985,6 +2992,13 @@
     async function analyzePoint(marker, point, label) {
         const cacheKey = getPointCacheKey(point);
 
+        // 防重复：正在分析中则忽略
+        if (_analyzingKeys.has(cacheKey)) {
+            showToast('正在分析中，请稍候...');
+            return;
+        }
+        _analyzingKeys.add(cacheKey);
+
         // 标记正在分析状态
         const origLabel = marker.getLabel && marker.getLabel();
         const origContent = origLabel && origLabel.content ? origLabel.content : '';
@@ -3026,6 +3040,7 @@
         } catch (err) {
             showToast('分析失败：' + (err.message || '请求失败'));
         } finally {
+            _analyzingKeys.delete(cacheKey);
             // 恢复标记 label（移除 ⏳）
             if (marker.setLabel) {
                 const cur = marker.getLabel && marker.getLabel();
