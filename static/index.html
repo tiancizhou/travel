@@ -2762,6 +2762,7 @@
 
     function updateLocationStatus(location) {
         const status = document.getElementById('locationStatus');
+        if (!status) return; // element removed from UI — skip silently
         if (location.source === 'browser') {
             status.classList.remove('muted');
             status.innerHTML = `定位来源：<strong>浏览器高精度定位</strong><br>${escapeHtml(location.name || location.city || '已获取当前位置')}`;
@@ -2833,12 +2834,16 @@
         const lat = Number(e.lnglat.getLat().toFixed(6));
 
         // 点击地图：折叠底部 sheet
+        // Only return early (dismiss-only) when both points are already set —
+        // otherwise let the tap fall through so it can set start/end.
         if (window.innerWidth <= 768) {
             const sidebar = document.getElementById('sidebar');
             if (sidebar && sidebar.classList.contains('sheet-expanded')) {
                 sidebar.classList.remove('sheet-expanded');
                 syncSheetHeight(sidebar, false);
-                return;
+                if (startCoord && endCoord) {
+                    return;
+                }
             }
         }
 
