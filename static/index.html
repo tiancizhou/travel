@@ -2072,17 +2072,9 @@
 
         <div class="sidebar-header">
             <h2>路线规划</h2>
-            <p>点击地图构建起点、途经点、终点，并生成交通路线图</p>
-            <button class="settings-btn" id="settingsBtn" type="button" title="模型配置">⚙</button>
         </div>
 
         <div class="sidebar-scroll">
-
-        <!-- 模式切换：桌面端可见 -->
-        <div class="mode-switcher">
-            <button class="mode-btn active" data-mode="walking" type="button">🚶 步行</button>
-            <button class="mode-btn" data-mode="transit" type="button">🚌 公交地铁</button>
-        </div>
 
         <div class="coord-cards">
             <div class="coord-card" id="card-start">
@@ -2090,28 +2082,21 @@
                     起点
                     <button class="clear-btn" id="clear-start" type="button">×</button>
                 </label>
-                <input class="search-input" id="start-input" placeholder="搜索起点或点击地图选取" autocomplete="off">
-                <div class="search-hint" id="start-hint">尚未设置起点</div>
-                <div class="autocomplete-panel" id="start-panel"></div>
+                <div class="search-hint" id="start-hint">点击地图设置起点</div>
             </div>
             <div class="coord-card" id="card-end">
                 <label>
                     终点
                     <button class="clear-btn" id="clear-end" type="button">×</button>
                 </label>
-                <input class="search-input" id="end-input" placeholder="搜索终点或点击地图选取" autocomplete="off">
-                <div class="search-hint" id="end-hint">尚未设置终点</div>
-                <div class="autocomplete-panel" id="end-panel"></div>
+                <div class="search-hint" id="end-hint">点击地图设置终点</div>
             </div>
         </div>
-
-        <button class="geolocation-btn" id="locateBtn" type="button">定位我的位置</button>
-        <div class="location-status muted" id="locationStatus">尚未定位，默认显示地图中心</div>
 
         <div class="waypoint-section">
             <div class="waypoint-header">
                 <h3>途经点</h3>
-                <button class="waypoint-clear" id="clearWaypointsBtn" type="button">清空途经点</button>
+                <button class="waypoint-clear" id="clearWaypointsBtn" type="button">清空</button>
             </div>
             <div class="waypoint-list" id="waypointList">
                 <div class="waypoint-meta">点击地图添加途经点，点击标记查看景点分析。</div>
@@ -2125,34 +2110,6 @@
             </div>
         </div>
 
-        <div class="settings-panel" id="settingsPanel">
-            <div class="settings-section">
-                <h4>🤖 路线建议模型 (GLM)</h4>
-                <label>Base URL<input id="guideBaseUrl" type="text"></label>
-                <label>模型 ID<input id="guideModel" type="text"></label>
-                <label>API Key
-                    <div class="key-input-wrap">
-                        <input id="guideKey" type="password">
-                        <button class="eye-btn" data-target="guideKey" type="button">👁</button>
-                    </div>
-                </label>
-            </div>
-            <div class="settings-section">
-                <h4>🔍 点位分析模型 (Grok)</h4>
-                <label>Base URL<input id="pointBaseUrl" type="text"></label>
-                <label>模型 ID<input id="pointModel" type="text"></label>
-                <label>API Key
-                    <div class="key-input-wrap">
-                        <input id="pointKey" type="password">
-                        <button class="eye-btn" data-target="pointKey" type="button">👁</button>
-                    </div>
-                </label>
-            </div>
-            <div class="settings-actions">
-                <button id="saveConfigBtn" type="button">保存配置</button>
-                <span id="saveConfigStatus"></span>
-            </div>
-        </div>
         </div><!-- /.sidebar-scroll -->
     </div>
 </div>
@@ -2192,64 +2149,11 @@
     };
 
     async function loadConfig() {
-        try {
-            const resp = await fetch('/api/config');
-            if (!resp.ok) return;
-            const data = await resp.json();
-            document.getElementById('guideBaseUrl').value = data.guide?.base_url || '';
-            document.getElementById('guideModel').value   = data.guide?.model    || '';
-            document.getElementById('guideKey').value     = data.guide?.key      || '';
-            document.getElementById('pointBaseUrl').value = data.point?.base_url || '';
-            document.getElementById('pointModel').value   = data.point?.model    || '';
-            document.getElementById('pointKey').value     = data.point?.key      || '';
-            document.getElementById('guideKey').removeAttribute('data-dirty');
-            document.getElementById('pointKey').removeAttribute('data-dirty');
-        } catch (_) { /* ignore — settings panel shows blank on failure */ }
+        // config loaded server-side from .env; no UI needed
     }
 
     async function saveConfig() {
-        const guideKeyEl = document.getElementById('guideKey');
-        const pointKeyEl = document.getElementById('pointKey');
-        // If the key field still contains the masked value (contains '***'), send empty
-        // string so the backend keeps the existing key
-        const body = {
-            guide: {
-                key:      guideKeyEl.dataset.dirty ? guideKeyEl.value : '',
-                base_url: document.getElementById('guideBaseUrl').value,
-                model:    document.getElementById('guideModel').value,
-            },
-            point: {
-                key:      pointKeyEl.dataset.dirty ? pointKeyEl.value : '',
-                base_url: document.getElementById('pointBaseUrl').value,
-                model:    document.getElementById('pointModel').value,
-            },
-        };
-        const status = document.getElementById('saveConfigStatus');
-        status.textContent = '保存中…';
-        try {
-            const resp = await fetch('/api/config', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body),
-            });
-            if (resp.ok) {
-                const data = await resp.json();
-                // Update key fields with masked values returned from backend
-                document.getElementById('guideKey').value = data.guide.key;
-                document.getElementById('pointKey').value = data.point.key;
-                document.getElementById('guideKey').removeAttribute('data-dirty');
-                document.getElementById('pointKey').removeAttribute('data-dirty');
-                status.textContent = '✅ 已保存';
-                showToast('配置已保存');
-            } else {
-                status.textContent = '❌ 保存失败';
-                showToast('保存失败');
-            }
-        } catch (_) {
-            status.textContent = '❌ 网络错误';
-            showToast('保存失败');
-        }
-        setTimeout(() => { status.textContent = ''; }, 3000);
+        // settings panel removed; no-op
     }
 
     function initMap() {
@@ -2268,19 +2172,9 @@
     }
 
     function bindEvents() {
-        const startInput = document.getElementById('start-input');
-        const endInput = document.getElementById('end-input');
-        const locateBtn = document.getElementById('locateBtn');
-        const modeButtons = document.querySelectorAll('.mode-btn');
         const mapSearchBtn = document.getElementById('mapSearchBtn');
         const nearbySearchBtn = document.getElementById('nearbySearchBtn');
         const mapSearchInput = document.getElementById('mapSearchInput');
-        startInput.addEventListener('input', () => handleSearchInput('start'));
-        endInput.addEventListener('input', () => handleSearchInput('end'));
-        document.getElementById('clear-start').addEventListener('click', () => clearPoint('start'));
-        document.getElementById('clear-end').addEventListener('click', () => clearPoint('end'));
-        document.getElementById('clearWaypointsBtn').addEventListener('click', clearWaypoints);
-        locateBtn.addEventListener('click', () => bootstrapLocation(true));
         document.addEventListener('click', onDocumentClick);
         mapSearchBtn.addEventListener('click', () => searchMapPlaces(false));
         nearbySearchBtn.addEventListener('click', () => searchMapPlaces(true));
@@ -2318,40 +2212,11 @@
             }, { passive: true });
         }());
 
-        // ⚙ 设置面板切换
-        const settingsBtn = document.getElementById('settingsBtn');
-        if (settingsBtn) {
-            settingsBtn.addEventListener('click', function () {
-                document.getElementById('settingsPanel').classList.toggle('open');
-                // 移动端：打开设置时自动展开抽屉
-                if (window.innerWidth <= 768) {
-                    const sb = document.getElementById('sidebar');
-                    if (sb && !sb.classList.contains('sheet-expanded')) {
-                        sb.classList.add('sheet-expanded');
-                        syncSheetHeight(sb, true);
-                    }
-                }
-            });
-        }
-
-        // 保存配置按钮
-        document.getElementById('saveConfigBtn').addEventListener('click', saveConfig);
-
-        // 👁 API Key 明文切换
-        document.querySelectorAll('.eye-btn').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                const input = document.getElementById(btn.dataset.target);
-                input.type = input.type === 'password' ? 'text' : 'password';
-            });
-        });
-
-        // Mark key inputs dirty when user types (so saveConfig knows to send the new value)
-        document.getElementById('guideKey').addEventListener('input', function () {
-            this.dataset.dirty = 'true';
-        });
-        document.getElementById('pointKey').addEventListener('input', function () {
-            this.dataset.dirty = 'true';
-        });
+        // 清空起终点按钮
+        document.getElementById('clear-start').addEventListener('click', () => clearPoint('start'));
+        document.getElementById('clear-end').addEventListener('click', () => clearPoint('end'));
+        // 清空途经点
+        document.getElementById('clearWaypointsBtn').addEventListener('click', clearWaypoints);
 
         // ── 移动端底部抽屉 ──
         const mobileHandle = document.getElementById('mobileSheetHandle');
@@ -2801,9 +2666,6 @@
     }
 
     async function bootstrapLocation(fromButton = false) {
-        const btn = document.getElementById('locateBtn');
-        btn.classList.add('locating');
-        btn.textContent = '正在定位...';
         try {
             const data = await getBestLocation();
             map.setCenter([data.lng, data.lat]);
@@ -2825,8 +2687,7 @@
             });
             if (fromButton) showToast('定位失败，已保留默认中心');
         } finally {
-            btn.classList.remove('locating');
-            btn.textContent = '定位我的位置';
+            // btn removed from UI
         }
     }
 
@@ -3037,19 +2898,16 @@
 
     function updatePointUI(kind) {
         const point = kind === 'start' ? startCoord : endCoord;
-        const input = document.getElementById(`${kind}-input`);
         const hint = document.getElementById(`${kind}-hint`);
         const card = document.getElementById(`card-${kind}`);
 
         if (!point) {
-            input.value = '';
-            hint.textContent = kind === 'start' ? '尚未设置起点' : '尚未设置终点';
+            hint.textContent = kind === 'start' ? '点击地图设置起点' : '点击地图设置终点';
             card.classList.remove('has-value');
             return;
         }
 
-        input.value = point.name || `${point.lng}, ${point.lat}`;
-        hint.textContent = `${point.lng.toFixed(6)}, ${point.lat.toFixed(6)}`;
+        hint.textContent = point.name || `${point.lng.toFixed(6)}, ${point.lat.toFixed(6)}`;
         card.classList.add('has-value');
     }
 
