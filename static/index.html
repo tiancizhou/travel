@@ -1187,6 +1187,8 @@
         .mobile-search-fab { display: none; }
         /* 移动端定位 FAB：桌面端不显示 */
         .mobile-locate-fab { display: none; }
+        /* 移动端 compact 模式切换：桌面端不显示 */
+        .mobile-mode-toggle { display: none; }
 
         /* sidebar-scroll：桌面端作为内部滚动容器 */
         .sidebar-scroll {
@@ -1569,26 +1571,36 @@
             .result-area          { padding: 0 14px 10px; }
             .settings-panel       { max-height: none; padding: 10px 14px; }
 
-            /* ══ mode-switcher：折叠态可见的大按钮 ══ */
-            .mode-switcher {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 10px;
-                padding: 8px 14px;
-                margin: 0;
-                flex-shrink: 0;
+            /* ══ mode-switcher：移动端隐藏大按钮 ══ */
+            .mode-switcher { display: none; }
+
+            /* 移动端 compact 模式切换（sidebar 内顶部） */
+            .mobile-mode-toggle {
+                display: flex;
+                gap: 8px;
+                padding: 0 14px;
+                margin-bottom: 8px;
+            }
+            .mobile-mode-toggle button {
+                flex: 1;
+                min-height: 36px;
+                border-radius: 10px;
+                border: 1.5px solid rgba(138,133,120,0.2);
+                background: rgba(255,255,255,0.6);
+                color: var(--muted);
+                font-size: 0.82rem;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.15s ease;
+            }
+            .mobile-mode-toggle button.active {
+                background: var(--forest);
+                color: white;
+                border-color: var(--forest);
             }
 
-            .mode-btn {
-                min-height: 48px;
-                border-radius: 14px;
-                font-size: 0.95rem;
-                font-weight: 600;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                gap: 4px;
-            }
+            /* 移动端隐藏次要信息 */
+            .location-status { display: none; }
 
             /* 移动端隐藏 sidebar 内的定位按钮（改为地图 FAB） */
             .geolocation-btn { display: none; }
@@ -1740,10 +1752,16 @@
 
         <div class="sidebar-scroll">
 
-        <!-- 模式切换：在折叠态可见 -->
+        <!-- 模式切换：桌面端可见 -->
         <div class="mode-switcher">
             <button class="mode-btn active" data-mode="walking" type="button">🚶 步行</button>
             <button class="mode-btn" data-mode="transit" type="button">🚌 公交地铁</button>
+        </div>
+
+        <!-- 移动端 compact 模式切换 -->
+        <div class="mobile-mode-toggle" id="mobileModeToggle">
+            <button class="active" data-mode="walking" type="button">🚶 步行</button>
+            <button data-mode="transit" type="button">🚌 公交</button>
         </div>
 
         <div class="coord-cards">
@@ -1783,7 +1801,7 @@
         <div class="result-area" id="resultArea">
             <div class="empty-state">
                 <div class="icon">🗺️</div>
-                <p>点位变化后会自动生成路线图；路线摘要会显示在地图浮层中。</p>
+                <p>设置起点和终点后自动生成路线</p>
             </div>
         </div>
 
@@ -1939,6 +1957,14 @@
         });
         modeButtons.forEach((button) => {
             button.addEventListener('click', () => setMode(button.dataset.mode || 'walking'));
+        });
+
+        // 移动端 compact 模式切换
+        document.querySelectorAll('#mobileModeToggle button').forEach((button) => {
+            button.addEventListener('click', (e) => {
+                e.stopPropagation();
+                setMode(button.dataset.mode || 'walking');
+            });
         });
 
         // 折叠按钮点击
@@ -2250,6 +2276,10 @@
     function setMode(mode) {
         currentMode = mode;
         document.querySelectorAll('.mode-btn').forEach((button) => {
+            button.classList.toggle('active', button.dataset.mode === mode);
+        });
+        // 同步移动端 compact toggle
+        document.querySelectorAll('#mobileModeToggle button').forEach((button) => {
             button.classList.toggle('active', button.dataset.mode === mode);
         });
         triggerRouteRefresh();
@@ -2966,7 +2996,7 @@
             }
             // 不重置 .collapsed class，保持用户折叠偏好
             routeCard.classList.add('show');
-            resultArea.innerHTML = '<div class="empty-state"><div class="icon">✅</div><p>路线图已自动刷新。点击地图上的任意点位标记，可单独触发 AI 景点分析。</p></div>';
+            resultArea.innerHTML = '<div class="empty-state"><div class="icon">✅</div><p>路线图已生成 · ' + distKm + 'km · ' + durMin + '分钟</p><p style="margin-top:4px;font-size:0.76rem;color:var(--muted)">点击地图上的标记可查看 AI 景点分析</p></div>';
 
             showToast('路线图生成成功');
         } catch (err) {
