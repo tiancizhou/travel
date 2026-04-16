@@ -1043,7 +1043,7 @@
 
         .marker-preview,
         .marker-analysis {
-            max-width: 280px;
+            width: 260px;
             color: #1f2937;
             line-height: 1.6;
         }
@@ -1051,14 +1051,23 @@
         .marker-preview-title,
         .marker-analysis-title {
             font-weight: 700;
+            font-size: 0.92rem;
             color: var(--forest);
-            margin-bottom: 6px;
+            margin-bottom: 2px;
+            /* 超长地名截断，不撑宽卡片 */
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .marker-preview-meta,
         .marker-analysis-meta {
             color: var(--muted);
-            font-size: 0.76rem;
+            font-size: 0.72rem;
+            margin-bottom: 8px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .marker-analysis p {
@@ -1066,51 +1075,74 @@
             font-size: 0.82rem;
         }
 
+        /* ── 结构化卡片各块 ── */
         .marker-section {
             margin-bottom: 8px;
         }
-        .marker-section-label {
-            font-weight: 600;
-            font-size: 0.78rem;
-            color: var(--forest);
+
+        /* verdict 行：emoji + 文字横排一行 */
+        .marker-verdict-row {
+            display: flex;
+            align-items: baseline;
+            gap: 5px;
             margin-bottom: 3px;
         }
+        .marker-verdict-badge {
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: var(--forest);
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .marker-verdict-reason {
+            font-size: 0.78rem;
+            color: #4b5563;
+            line-height: 1.4;
+        }
+
+        /* 周边景点小标题 */
+        .marker-section-label {
+            font-weight: 600;
+            font-size: 0.74rem;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 4px;
+        }
         .marker-section-text {
-            font-size: 0.8rem;
+            font-size: 0.79rem;
             color: #4b5563;
             line-height: 1.5;
         }
+
+        /* 每个景点：独立一行，名字粗体 + 描述同行（同行放不下则自然换行） */
         .marker-landmark-item {
-            display: flex;
-            gap: 6px;
-            font-size: 0.8rem;
-            line-height: 1.5;
-            padding-left: 8px;
-        }
-        .marker-landmark-item::before {
-            content: '·';
-            color: var(--muted);
-            flex-shrink: 0;
+            display: block;
+            font-size: 0.79rem;
+            line-height: 1.45;
+            padding: 2px 0 2px 10px;
+            border-left: 2px solid rgba(74,111,82,0.2);
+            margin-bottom: 4px;
         }
         .marker-landmark-name {
-            font-weight: 500;
+            font-weight: 600;
             color: #374151;
-            white-space: nowrap;
         }
         .marker-landmark-desc {
             color: #6b7280;
+            margin-left: 4px;
         }
 
         /* ── 分析内容折叠/展开 ── */
         .marker-analysis-body {
-            max-height: 76px;
+            max-height: 200px;
             overflow: hidden;
             position: relative;
-            transition: max-height 0.25s ease;
+            transition: max-height 0.28s ease;
         }
 
         .marker-analysis-body.expanded {
-            max-height: 800px;
+            max-height: 600px;
         }
 
         .marker-analysis-body:not(.expanded)::after {
@@ -1671,19 +1703,21 @@
             /* ══ info window 不超屏 ══ */
             .amap-info-content          { max-width: calc(100vw - 32px) !important; }
             .marker-analysis,
-            .marker-preview             { max-width: calc(100vw - 48px); }
+            .marker-preview             { width: min(260px, calc(100vw - 48px)); }
 
-            /* 整个弹窗高度不超过视口的 40%，内容可滚动 */
+            /* 整个弹窗高度不超过视口的 42%，内容可滚动 */
             .marker-analysis {
-                max-height: 40dvh;
-                max-height: 40vh;
+                max-height: 42dvh;
+                max-height: 42vh;
                 overflow-y: auto;
                 -webkit-overflow-scrolling: touch;
             }
 
-            /* 展开态：body 高度跟随弹窗容器，而非固定 800px */
+            /* 展开态：body 高度跟随弹窗容器，无需固定限制 */
+            .marker-analysis-body,
             .marker-analysis-body.expanded {
                 max-height: none;
+                overflow: visible;
             }
         }
 
@@ -2184,22 +2218,28 @@
     }
 
     function renderMarkerAnalysis(data, cacheKey) {
+        const titleText = escapeHtml(data.name || data.label || '点位分析');
+        const metaText  = escapeHtml(data.label && data.label !== data.name ? data.label : '');
+
         // 有结构化数据时渲染卡片
         if (data.verdict) {
             const verdictEmoji = data.verdict.includes('值得') ? '✅'
                 : data.verdict.includes('顺路') ? '🔄' : '⏭️';
+
             const landmarkHtml = (data.landmarks_structured || []).map(lm =>
-                `<div class="marker-landmark-item"><span class="marker-landmark-name">${escapeHtml(lm.name)}</span><span class="marker-landmark-desc">${escapeHtml(lm.desc)}</span></div>`
+                `<div class="marker-landmark-item"><span class="marker-landmark-name">${escapeHtml(lm.name)}</span>${lm.desc ? `<span class="marker-landmark-desc">· ${escapeHtml(lm.desc)}</span>` : ''}</div>`
             ).join('');
 
             return `
                 <div class="marker-analysis">
-                    <div class="marker-analysis-title">${escapeHtml(data.name || data.label || '点位分析')}</div>
-                    <div class="marker-analysis-meta">${escapeHtml(data.label || '点位景点分析')}</div>
+                    <div class="marker-analysis-title">${titleText}</div>
+                    ${metaText ? `<div class="marker-analysis-meta">${metaText}</div>` : ''}
                     <div class="marker-analysis-body">
                         <div class="marker-section">
-                            <div class="marker-section-label">${verdictEmoji} ${escapeHtml(data.verdict)}</div>
-                            <div class="marker-section-text">${escapeHtml(data.reason || '')}</div>
+                            <div class="marker-verdict-row">
+                                <span class="marker-verdict-badge">${verdictEmoji} ${escapeHtml(data.verdict)}</span>
+                            </div>
+                            ${data.reason ? `<div class="marker-verdict-reason">${escapeHtml(data.reason)}</div>` : ''}
                         </div>
                         ${landmarkHtml ? `
                         <div class="marker-section">
@@ -2221,17 +2261,15 @@
         }
 
         // 降级：无结构化数据时回退旧散文渲染
-        const tags = (data.nearby_landmarks || []).map((name) => `<span class="landmark-tag">${escapeHtml(name)}</span>`).join('');
         const analysisText = escapeHtml(data.analysis || '暂无分析结果。').replace(/\n/g, '<br>');
         return `
             <div class="marker-analysis">
-                <div class="marker-analysis-title">${escapeHtml(data.name || data.label || '点位分析')}</div>
-                <div class="marker-analysis-meta">${escapeHtml(data.label || '点位景点分析')}</div>
+                <div class="marker-analysis-title">${titleText}</div>
+                ${metaText ? `<div class="marker-analysis-meta">${metaText}</div>` : ''}
                 <div class="marker-analysis-body">
                     <p>${analysisText}</p>
                 </div>
                 <button class="marker-expand-btn" type="button">展开全文</button>
-                ${tags ? `<div class="landmark-tags">${tags}</div>` : ''}
                 <div class="marker-action-row">
                     <button class="marker-delete-btn" data-delete-cache-key="${escapeHtml(cacheKey)}" type="button">删除该点</button>
                 </div>
@@ -3014,7 +3052,8 @@
                 `;
             }
             // 不重置 .collapsed class，保持用户折叠偏好
-            routeCard.classList.add('show');
+            // 路线就绪但不自动弹出摘要卡，保持大地图视野
+            routeCard.classList.remove('show');  // 确保隐藏
             resultArea.innerHTML = '<div class="empty-state"><div class="icon">✅</div><p>路线图已生成 · ' + distKm + 'km · ' + durMin + '分钟</p><p style="margin-top:4px;font-size:0.76rem;color:var(--muted)">点击地图上的标记可查看 AI 景点分析</p></div>';
 
             showToast('路线图生成成功');
