@@ -1066,6 +1066,47 @@
             font-size: 0.82rem;
         }
 
+        /* ── 分析内容折叠/展开 ── */
+        .marker-analysis-body {
+            max-height: 76px;
+            overflow: hidden;
+            position: relative;
+            transition: max-height 0.25s ease;
+        }
+
+        .marker-analysis-body.expanded {
+            max-height: 800px;
+        }
+
+        .marker-analysis-body:not(.expanded)::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 28px;
+            background: linear-gradient(transparent, white);
+        }
+
+        .marker-expand-btn {
+            display: block;
+            width: 100%;
+            margin-top: 2px;
+            padding: 4px 0;
+            border: none;
+            background: none;
+            color: var(--terracotta);
+            font-size: 0.76rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: center;
+        }
+
+        /* 内容不够长时隐藏展开按钮 */
+        .marker-analysis-body.no-overflow + .marker-expand-btn {
+            display: none;
+        }
+
         .marker-loading {
             display: flex;
             align-items: center;
@@ -2051,11 +2092,15 @@
 
     function renderMarkerAnalysis(data, cacheKey) {
         const tags = (data.nearby_landmarks || []).map((name) => `<span class="landmark-tag">${escapeHtml(name)}</span>`).join('');
+        const analysisText = escapeHtml(data.analysis || '暂无分析结果。').replace(/\n/g, '<br>');
         return `
             <div class="marker-analysis">
                 <div class="marker-analysis-title">${escapeHtml(data.name || data.label || '点位分析')}</div>
                 <div class="marker-analysis-meta">${escapeHtml(data.label || '点位景点分析')}</div>
-                <p>${escapeHtml(data.analysis || '暂无分析结果。').replace(/\n/g, '<br>')}</p>
+                <div class="marker-analysis-body">
+                    <p>${analysisText}</p>
+                </div>
+                <button class="marker-expand-btn" type="button">展开全文</button>
                 ${tags ? `<div class="landmark-tags">${tags}</div>` : ''}
                 <div class="marker-action-row">
                     <button class="marker-delete-btn" data-delete-cache-key="${escapeHtml(cacheKey)}" type="button">删除该点</button>
@@ -2094,6 +2139,19 @@
         const button = document.querySelector(`[data-delete-cache-key="${CSS.escape(cacheKey)}"]`);
         if (button) {
             button.addEventListener('click', () => deletePointByCacheKey(cacheKey));
+        }
+        // 展开/收起分析内容
+        const expandBtn = document.querySelector('.marker-expand-btn');
+        const body = document.querySelector('.marker-analysis-body');
+        if (expandBtn && body) {
+            // 内容不够长则隐藏按钮
+            if (body.scrollHeight <= 80) {
+                body.classList.add('no-overflow');
+            }
+            expandBtn.addEventListener('click', function () {
+                const expanded = body.classList.toggle('expanded');
+                expandBtn.textContent = expanded ? '收起' : '展开全文';
+            });
         }
     }
 
