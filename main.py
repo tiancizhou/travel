@@ -30,6 +30,7 @@ from services.amap import (
 )
 from services.llm import (
     generate_city_walk_guide,
+    generate_point_research,
     generate_point_analysis,
     update_guide_cfg,
     update_point_cfg,
@@ -150,12 +151,19 @@ async def analyze_point(req: PointAnalysisRequest):
     except Exception as e:
         raise HTTPException(status_code=502, detail=str(e))
 
+    label = req.label or name
+
+    # 第一阶段：Grok 搜索提炼（失败则降级为 None）
+    research = await generate_point_research(label=label, lng=req.lng, lat=req.lat)
+
+    # 第二阶段：GLM 分析总结（有 research 则用增强版 prompt，否则用 fallback）
     try:
         analysis = await generate_point_analysis(
-            label=req.label or name,
+            label=label,
             lng=req.lng,
             lat=req.lat,
             landmarks=landmarks,
+            research=research,
         )
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"点位分析生成失败: {str(e)}")
