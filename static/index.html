@@ -1716,11 +1716,11 @@
                 position: fixed;
                 left: 10px;
                 right: 10px;
-                bottom: calc(var(--sheet-h, 130px) + 8px);
+                bottom: calc(var(--sheet-h, 72px) + 8px);
                 width: auto;
                 z-index: 210;
-                max-height: calc(100dvh - var(--sheet-h, 130px) - 80px);
-                max-height: calc(100vh  - var(--sheet-h, 130px) - 80px);
+                max-height: calc(100dvh - var(--sheet-h, 72px) - 80px);
+                max-height: calc(100vh  - var(--sheet-h, 72px) - 80px);
                 overflow-y: auto;
                 transition: bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             }
@@ -1731,7 +1731,7 @@
                 bottom: 0;
                 left: 0;
                 right: 0;
-                height: var(--sheet-h, 130px);
+                height: var(--sheet-h, 72px);
                 max-height: 88dvh;
                 max-height: 88vh;
                 border-radius: 16px 16px 0 0;
@@ -1785,18 +1785,12 @@
             .sidebar-header h2 { font-size: 1rem; }
             .sidebar-header p  { display: none; }
 
-            /* ══ 折叠态只显示起终点输入 ══ */
-            .sidebar:not(.sheet-expanded) .sidebar-scroll {
-                overflow: visible;
-            }
-            .sidebar:not(.sheet-expanded) .mode-switcher,
-            .sidebar:not(.sheet-expanded) .waypoint-section,
-            .sidebar:not(.sheet-expanded) .result-area,
-            .sidebar:not(.sheet-expanded) .settings-panel,
-            .sidebar:not(.sheet-expanded) .geolocation-btn,
-            .sidebar:not(.sheet-expanded) .location-status {
+            /* ══ 折叠态：只显示快捷栏，隐藏内容区 ══ */
+            .sidebar:not(.sheet-expanded) .sidebar-scroll,
+            .sidebar:not(.sheet-expanded) .sidebar-header {
                 display: none;
             }
+            /* 展开态：显示内容区，隐藏快捷栏（快捷栏自身已用 sheet-expanded 控制） */
 
             /* ═─ Sidebar 内容区可滚动 ══ */
             .sidebar-scroll {
@@ -1819,7 +1813,45 @@
             /* ══ mode-switcher：移动端隐藏大按钮 ══ */
             .mode-switcher { display: none; }
 
-            /* 移动端 compact 模式切换 */
+            /* ══ 折叠态快捷栏 ══ */
+            .sheet-collapsed-bar {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding: 6px 12px 2px;
+                flex-shrink: 0;
+            }
+            /* 展开时隐藏折叠栏 */
+            .sidebar.sheet-expanded .sheet-collapsed-bar {
+                display: none;
+            }
+            .sheet-collapsed-bar .mobile-mode-toggle {
+                flex: 1;
+                padding: 0;
+                margin-bottom: 0;
+            }
+            /* 路线胶囊按钮 */
+            .route-pill {
+                flex-shrink: 0;
+                display: flex;
+                align-items: center;
+                gap: 4px;
+                background: var(--forest);
+                color: #fff;
+                border: none;
+                border-radius: 20px;
+                padding: 5px 12px 5px 8px;
+                font-size: 0.76rem;
+                font-weight: 600;
+                cursor: pointer;
+                white-space: nowrap;
+                box-shadow: 0 2px 8px rgba(74,111,82,0.3);
+                transition: opacity 0.15s;
+            }
+            .route-pill:active { opacity: 0.8; }
+            .route-pill-icon { font-size: 0.9rem; }
+
+            /* 移动端 compact 模式切换（独立时的样式保持） */
             .mobile-mode-toggle {
                 display: flex;
                 gap: 6px;
@@ -1855,7 +1887,7 @@
                 display: flex;
                 position: fixed;
                 right: 12px;
-                bottom: calc(var(--sheet-h, 130px) + 12px);
+                bottom: calc(var(--sheet-h, 72px) + 12px);
                 width: 48px;
                 height: 48px;
                 border-radius: 50%;
@@ -1991,6 +2023,18 @@
         <!-- 移动端底部抽屉拖拽把手 -->
         <div class="mobile-sheet-handle" id="mobileSheetHandle"></div>
 
+        <!-- 折叠态快捷栏：模式切换 + 路线摘要胶囊 -->
+        <div class="sheet-collapsed-bar" id="sheetCollapsedBar">
+            <div class="mobile-mode-toggle" id="mobileModeToggle">
+                <button class="active" data-mode="walking" type="button">🚶 步行</button>
+                <button data-mode="transit" type="button">🚌 公交</button>
+            </div>
+            <button class="route-pill" id="routePill" type="button" style="display:none">
+                <span class="route-pill-icon">🗺️</span>
+                <span class="route-pill-text" id="routePillText">查看路线</span>
+            </button>
+        </div>
+
         <div class="sidebar-header">
             <h2>路线规划</h2>
             <p>点击地图构建起点、途经点、终点，并生成交通路线图</p>
@@ -2003,12 +2047,6 @@
         <div class="mode-switcher">
             <button class="mode-btn active" data-mode="walking" type="button">🚶 步行</button>
             <button class="mode-btn" data-mode="transit" type="button">🚌 公交地铁</button>
-        </div>
-
-        <!-- 移动端 compact 模式切换 -->
-        <div class="mobile-mode-toggle" id="mobileModeToggle">
-            <button class="active" data-mode="walking" type="button">🚶 步行</button>
-            <button data-mode="transit" type="button">🚌 公交</button>
         </div>
 
         <div class="coord-cards">
@@ -2297,7 +2335,7 @@
      */
     function syncSheetHeight(sidebar, expanded) {
         if (window.innerWidth > 768) return;
-        const h = expanded ? Math.round(window.innerHeight * 0.88) : 130;
+        const h = expanded ? Math.round(window.innerHeight * 0.88) : 72;
         document.documentElement.style.setProperty('--sheet-h', h + 'px');
     }
 
@@ -2310,6 +2348,21 @@
         initSearchFab();
         initSheetHeaderTap(sidebar);
         initMobileLocateFab();
+
+        // 路线胶囊：点击展开 sheet 并滚到结果区
+        const pill = document.getElementById('routePill');
+        if (pill) {
+            pill.addEventListener('click', function (e) {
+                e.stopPropagation();
+                sidebar.classList.add('sheet-expanded');
+                syncSheetHeight(sidebar, true);
+                // 展开后滚到结果区
+                setTimeout(() => {
+                    const resultArea = document.getElementById('resultArea');
+                    if (resultArea) resultArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 320);
+            });
+        }
     }
 
     /** 移动端搜索 FAB：点击显示/隐藏搜索栏 */
@@ -2373,7 +2426,7 @@
 
         let startY = 0;
         let startH = 0;
-        const COLLAPSED_H = 130;
+        const COLLAPSED_H = 72;
         const EXPANDED_H  = Math.round(window.innerHeight * 0.88);
 
         handle.addEventListener('touchstart', function (e) {
@@ -2882,6 +2935,16 @@
     async function onMapClick(e) {
         const lng = Number(e.lnglat.getLng().toFixed(6));
         const lat = Number(e.lnglat.getLat().toFixed(6));
+
+        // 点击地图：折叠底部 sheet
+        if (window.innerWidth <= 768) {
+            const sidebar = document.getElementById('sidebar');
+            if (sidebar && sidebar.classList.contains('sheet-expanded')) {
+                sidebar.classList.remove('sheet-expanded');
+                syncSheetHeight(sidebar, false);
+                return;
+            }
+        }
 
         // 若分析 tooltip 显示中，点击地图任意处关闭它
         const tooltip = document.getElementById('analysisTooltip');
@@ -3396,10 +3459,15 @@
                     </div>
                 `;
             }
-            // 不重置 .collapsed class，保持用户折叠偏好
-            // 路线就绪但不自动弹出摘要卡，保持大地图视野
-            routeCard.classList.remove('show');  // 确保隐藏
-            resultArea.innerHTML = '<div class="empty-state"><div class="icon">✅</div><p>路线图已生成 · ' + distKm + 'km · ' + durMin + '分钟</p><p style="margin-top:4px;font-size:0.76rem;color:var(--muted)">点击地图上的标记可查看 AI 景点分析</p></div>';
+            // 路线就绪：更新折叠态胶囊按钮，保持大地图视野
+            routeCard.classList.remove('show');
+            const pill = document.getElementById('routePill');
+            const pillText = document.getElementById('routePillText');
+            if (pill && pillText) {
+                pillText.textContent = `${distKm}km · ${durMin}min`;
+                pill.style.display = 'flex';
+            }
+            resultArea.innerHTML = '<div class="empty-state"><div class="icon">✅</div><p>路线已生成</p><p style="margin-top:4px;font-size:0.76rem;color:var(--muted)">点击地图标记可查看 AI 景点分析</p></div>';
 
             showToast('路线图生成成功');
         } catch (err) {
