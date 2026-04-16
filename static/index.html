@@ -1066,6 +1066,41 @@
             font-size: 0.82rem;
         }
 
+        .marker-section {
+            margin-bottom: 8px;
+        }
+        .marker-section-label {
+            font-weight: 600;
+            font-size: 0.78rem;
+            color: var(--forest);
+            margin-bottom: 3px;
+        }
+        .marker-section-text {
+            font-size: 0.8rem;
+            color: #4b5563;
+            line-height: 1.5;
+        }
+        .marker-landmark-item {
+            display: flex;
+            gap: 6px;
+            font-size: 0.8rem;
+            line-height: 1.5;
+            padding-left: 8px;
+        }
+        .marker-landmark-item::before {
+            content: '·';
+            color: var(--muted);
+            flex-shrink: 0;
+        }
+        .marker-landmark-name {
+            font-weight: 500;
+            color: #374151;
+            white-space: nowrap;
+        }
+        .marker-landmark-desc {
+            color: #6b7280;
+        }
+
         /* ── 分析内容折叠/展开 ── */
         .marker-analysis-body {
             max-height: 76px;
@@ -2104,6 +2139,43 @@
     }
 
     function renderMarkerAnalysis(data, cacheKey) {
+        // 有结构化数据时渲染卡片
+        if (data.verdict) {
+            const verdictEmoji = data.verdict.includes('值得') ? '✅'
+                : data.verdict.includes('顺路') ? '🔄' : '⏭️';
+            const landmarkHtml = (data.landmarks_structured || []).map(lm =>
+                `<div class="marker-landmark-item"><span class="marker-landmark-name">${escapeHtml(lm.name)}</span><span class="marker-landmark-desc">${escapeHtml(lm.desc)}</span></div>`
+            ).join('');
+
+            return `
+                <div class="marker-analysis">
+                    <div class="marker-analysis-title">${escapeHtml(data.name || data.label || '点位分析')}</div>
+                    <div class="marker-analysis-meta">${escapeHtml(data.label || '点位景点分析')}</div>
+                    <div class="marker-analysis-body">
+                        <div class="marker-section">
+                            <div class="marker-section-label">${verdictEmoji} ${escapeHtml(data.verdict)}</div>
+                            <div class="marker-section-text">${escapeHtml(data.reason || '')}</div>
+                        </div>
+                        ${landmarkHtml ? `
+                        <div class="marker-section">
+                            <div class="marker-section-label">📍 周边景点</div>
+                            ${landmarkHtml}
+                        </div>` : ''}
+                        ${data.transit ? `
+                        <div class="marker-section">
+                            <div class="marker-section-label">🚇 交通</div>
+                            <div class="marker-section-text">${escapeHtml(data.transit)}</div>
+                        </div>` : ''}
+                    </div>
+                    <button class="marker-expand-btn" type="button">展开全文</button>
+                    <div class="marker-action-row">
+                        <button class="marker-delete-btn" data-delete-cache-key="${escapeHtml(cacheKey)}" type="button">删除该点</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 降级：无结构化数据时回退旧散文渲染
         const tags = (data.nearby_landmarks || []).map((name) => `<span class="landmark-tag">${escapeHtml(name)}</span>`).join('');
         const analysisText = escapeHtml(data.analysis || '暂无分析结果。').replace(/\n/g, '<br>');
         return `
