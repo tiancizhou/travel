@@ -1109,6 +1109,8 @@
         .mobile-sheet-handle { display: none; }
         /* 移动端搜索 FAB：桌面端不显示 */
         .mobile-search-fab { display: none; }
+        /* 移动端定位 FAB：桌面端不显示 */
+        .mobile-locate-fab { display: none; }
 
         /* sidebar-scroll：桌面端作为内部滚动容器 */
         .sidebar-scroll {
@@ -1407,11 +1409,11 @@
                 position: fixed;
                 left: 10px;
                 right: 10px;
-                bottom: calc(var(--sheet-h, 72px) + 8px);
+                bottom: calc(var(--sheet-h, 148px) + 8px);
                 width: auto;
                 z-index: 210;
-                max-height: calc(100dvh - var(--sheet-h, 72px) - 80px);
-                max-height: calc(100vh  - var(--sheet-h, 72px) - 80px);
+                max-height: calc(100dvh - var(--sheet-h, 148px) - 80px);
+                max-height: calc(100vh  - var(--sheet-h, 148px) - 80px);
                 overflow-y: auto;
                 transition: bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             }
@@ -1422,7 +1424,7 @@
                 bottom: 0;
                 left: 0;
                 right: 0;
-                height: var(--sheet-h, 72px);
+                height: var(--sheet-h, 148px);
                 max-height: 88dvh;
                 max-height: 88vh;
                 border-radius: 20px 20px 0 0;
@@ -1485,20 +1487,70 @@
             /* ══ 紧凑间距 ══ */
             .coord-cards          { padding: 12px 14px; gap: 10px; }
             .coord-card           { padding: 10px 12px; }
-            .geolocation-btn      { margin: 0 14px 8px; }
             .location-status      { padding: 0 14px 6px; font-size: 0.78rem; }
-            .mode-switcher        { margin: 0 14px 10px; }
             .waypoint-section     { padding: 0 14px 10px; }
             .plan-btn             { margin: 0 14px 12px; }
             .result-area          { padding: 0 14px 10px; }
             .settings-panel       { max-height: none; padding: 10px 14px; }
 
+            /* ══ mode-switcher：折叠态可见的大按钮 ══ */
+            .mode-switcher {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+                padding: 8px 14px;
+                margin: 0;
+                flex-shrink: 0;
+            }
+
+            .mode-btn {
+                min-height: 48px;
+                border-radius: 14px;
+                font-size: 0.95rem;
+                font-weight: 600;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 4px;
+            }
+
+            /* 移动端隐藏 sidebar 内的定位按钮（改为地图 FAB） */
+            .geolocation-btn { display: none; }
+
+            /* ══ 定位 FAB（地图右下角悬浮） ══ */
+            .mobile-locate-fab {
+                display: flex;
+                position: fixed;
+                right: 12px;
+                bottom: calc(var(--sheet-h, 148px) + 12px);
+                width: 48px;
+                height: 48px;
+                border-radius: 50%;
+                background: rgba(255,255,255,0.95);
+                backdrop-filter: blur(12px);
+                border: 1px solid rgba(255,255,255,0.7);
+                box-shadow: 0 2px 14px rgba(0,0,0,0.18);
+                align-items: center;
+                justify-content: center;
+                color: var(--forest);
+                cursor: pointer;
+                z-index: 210;
+                transition: bottom 0.3s cubic-bezier(0.4,0,0.2,1);
+            }
+
+            .mobile-locate-fab:active {
+                background: rgba(245,240,232,0.98);
+            }
+
+            .mobile-locate-fab svg {
+                width: 22px;
+                height: 22px;
+            }
+
             /* ══ iOS 输入框防缩放（< 16px 触发系统缩放） ══ */
             input, textarea, select { font-size: 16px !important; }
 
             /* ══ 触摸目标 ≥ 44px ══ */
-            .mode-btn        { min-height: 44px; font-size: 0.9rem; }
-            .geolocation-btn { min-height: 44px; }
             .plan-btn        { min-height: 52px; font-size: 1rem; }
             .map-search-btn,
             .map-nearby-btn  { min-height: 44px; padding: 0 14px; white-space: nowrap; }
@@ -1553,6 +1605,17 @@
         <!-- 移动端搜索 FAB（桌面端通过 CSS display:none 隐藏） -->
         <button class="mobile-search-fab" id="mobileSearchFab" type="button" title="搜索地点">🔍</button>
 
+        <!-- 移动端定位 FAB（桌面端通过 CSS display:none 隐藏） -->
+        <button class="mobile-locate-fab" id="mobileLocateFab" type="button" title="定位我的位置">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                <circle cx="12" cy="12" r="3.5"/>
+                <line x1="12" y1="2" x2="12" y2="6"/>
+                <line x1="12" y1="18" x2="12" y2="22"/>
+                <line x1="2" y1="12" x2="6" y2="12"/>
+                <line x1="18" y1="12" x2="22" y2="12"/>
+            </svg>
+        </button>
+
         <div class="map-search-shell" id="mapSearchShell">
             <div class="map-search-bar">
                 <input class="map-search-input" id="mapSearchInput" placeholder="搜索地图上的地点，如：咖啡馆、景点、商场">
@@ -1587,6 +1650,13 @@
         </div>
 
         <div class="sidebar-scroll">
+
+        <!-- 模式切换：在折叠态可见 -->
+        <div class="mode-switcher">
+            <button class="mode-btn active" data-mode="walking" type="button">🚶 步行</button>
+            <button class="mode-btn" data-mode="transit" type="button">🚌 公交地铁</button>
+        </div>
+
         <div class="coord-cards">
             <div class="coord-card" id="card-start">
                 <label>
@@ -1610,11 +1680,6 @@
 
         <button class="geolocation-btn" id="locateBtn" type="button">定位我的位置</button>
         <div class="location-status muted" id="locationStatus">尚未定位，默认显示地图中心</div>
-
-        <div class="mode-switcher">
-            <button class="mode-btn active" data-mode="walking" type="button">步行</button>
-            <button class="mode-btn" data-mode="transit" type="button">公交地铁</button>
-        </div>
 
         <div class="waypoint-section">
             <div class="waypoint-header">
@@ -1858,7 +1923,7 @@
      */
     function syncSheetHeight(sidebar, expanded) {
         if (window.innerWidth > 768) return;
-        const h = expanded ? Math.round(window.innerHeight * 0.88) : 72;
+        const h = expanded ? Math.round(window.innerHeight * 0.88) : 148;
         document.documentElement.style.setProperty('--sheet-h', h + 'px');
     }
 
@@ -1870,6 +1935,7 @@
         initSheetDrag(sidebar);
         initSearchFab();
         initSheetHeaderTap(sidebar);
+        initMobileLocateFab();
     }
 
     /** 移动端搜索 FAB：点击显示/隐藏搜索栏 */
@@ -1906,6 +1972,20 @@
             const expanded = sidebar.classList.toggle('sheet-expanded');
             syncSheetHeight(sidebar, expanded);
         });
+        // mode-btn 点击不要触发 header 的展开/收起
+        sidebar.querySelectorAll('.mode-btn').forEach(function (btn) {
+            btn.addEventListener('click', function (e) { e.stopPropagation(); });
+        });
+    }
+
+    /** 移动端定位 FAB */
+    function initMobileLocateFab() {
+        if (window.innerWidth > 768) return;
+        const fab = document.getElementById('mobileLocateFab');
+        if (!fab) return;
+        fab.addEventListener('click', function () {
+            bootstrapLocation(true);
+        });
     }
 
     /** 移动端底部抽屉 touch drag */
@@ -1916,7 +1996,7 @@
 
         let startY = 0;
         let startH = 0;
-        const COLLAPSED_H = 72;
+        const COLLAPSED_H = 148;
         const EXPANDED_H  = Math.round(window.innerHeight * 0.88);
 
         handle.addEventListener('touchstart', function (e) {
