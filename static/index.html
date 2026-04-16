@@ -3509,8 +3509,6 @@
                 pillText.textContent = `${distKm}km · ${durMin}min`;
                 pill.style.display = 'flex';
             }
-            resultArea.innerHTML = '<div class="empty-state"><div class="icon">✅</div><p>路线已生成</p><p style="margin-top:4px;font-size:0.76rem;color:var(--muted)">点击地图标记可查看 AI 景点分析</p></div>';
-
             showToast('路线图生成成功');
         } catch (err) {
             const msg = String(err.message || '请求失败');
