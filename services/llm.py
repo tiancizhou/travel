@@ -347,7 +347,8 @@ TRANSIT: 一句话交通说明（如无可靠信息则写"暂无交通数据"）
 
 def parse_point_analysis(raw: str) -> dict:
     """将 GLM 结构化文本输出解析为字典。解析失败时返回 {"raw": raw}。"""
-    result = {"raw": raw}
+    import logging
+    result: dict = {"raw": raw}
     try:
         lines = [l.strip() for l in raw.strip().splitlines() if l.strip()]
         for line in lines:
@@ -357,16 +358,17 @@ def parse_point_analysis(raw: str) -> dict:
                 result["reason"] = line[len("REASON:"):].strip()
             elif line.startswith("TRANSIT:"):
                 result["transit"] = line[len("TRANSIT:"):].strip()
-            elif line.startswith("- ") and "｜" in line:
+            elif line.startswith("- ") and ("｜" in line or "|" in line):
                 if "landmarks" not in result:
                     result["landmarks"] = []
-                parts = line[2:].split("｜", 1)
+                normalized = line.replace("|", "｜")
+                parts = normalized[2:].split("｜", 1)
                 result["landmarks"].append({
                     "name": parts[0].strip(),
                     "desc": parts[1].strip() if len(parts) > 1 else "",
                 })
-    except Exception:
-        pass
+    except Exception as exc:
+        logging.getLogger(__name__).warning("parse_point_analysis failed: %s", exc)
     return result
 
 
