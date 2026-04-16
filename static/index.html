@@ -756,6 +756,41 @@
             margin-bottom: 20px;
         }
 
+        /* ── 路线结果卡片（resultArea 内） ── */
+        .route-result-card {
+            background: white;
+            border-radius: 14px;
+            padding: 14px 16px;
+            border: 1px solid rgba(138,133,120,0.08);
+        }
+        .route-result-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .route-result-mode {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: rgba(196,93,62,0.1);
+            color: var(--terracotta);
+            font-size: 0.76rem;
+            font-weight: 700;
+        }
+        .route-result-stats {
+            font-size: 0.84rem;
+            font-weight: 600;
+            color: var(--forest);
+        }
+        .route-result-card .transit-summary {
+            margin-bottom: 10px;
+        }
+        .route-result-card .transit-steps {
+            margin-bottom: 0;
+        }
+
         .stat-chip {
             background: white;
             border-radius: 10px;
@@ -3426,20 +3461,19 @@
 
             const distKm = (data.distance / 1000).toFixed(1);
             const durMin = Math.ceil(data.duration / 60);
-            const modeHtml = `<div class="mode-badge">${renderModeLabel(data.mode || currentMode)}</div>`;
+
             const transitSummaryHtml = data.transit_summary
                 ? `<div class="transit-summary">换乘摘要：${escapeHtml(data.transit_summary)}</div>`
                 : '';
             const transitStepsHtml = renderTransitSteps(data.transit_steps);
 
-            // 更新折叠态摘要行（header 内，折叠时可见）
+            // 更新浮动路线卡数据（桌面端仍可查看）
+            const modeHtml = `<div class="mode-badge">${renderModeLabel(data.mode || currentMode)}</div>`;
             const summaryEl = document.getElementById('routeCardSummary');
             if (summaryEl) {
                 summaryEl.innerHTML =
                     `${modeHtml}<span class="stat-chip-sm">${distKm} km</span><span class="stat-chip-sm">${durMin} min</span>`;
             }
-
-            // 更新展开态主体（不覆盖 header 和 drag-handle）
             const bodyEl = document.getElementById('routeCardBody');
             if (bodyEl) {
                 bodyEl.innerHTML = `
@@ -3459,6 +3493,18 @@
                     </div>
                 `;
             }
+
+            // 更新 resultArea（底部 sheet 展开后可见）
+            resultArea.innerHTML = `
+                <div class="route-result-card">
+                    <div class="route-result-header">
+                        <span class="route-result-mode">${renderModeLabel(data.mode || currentMode)}</span>
+                        <span class="route-result-stats">${distKm} km · ${durMin} min</span>
+                    </div>
+                    ${transitSummaryHtml}
+                    ${transitStepsHtml}
+                </div>
+            `;
             // 路线就绪：更新折叠态胶囊按钮，保持大地图视野
             routeCard.classList.remove('show');
             const pill = document.getElementById('routePill');
