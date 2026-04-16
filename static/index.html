@@ -2181,7 +2181,7 @@
         mapSearchInput.addEventListener('keydown', (event) => {
             if (event.key === 'Enter') searchMapPlaces(false);
         });
-        modeButtons.forEach((button) => {
+        document.querySelectorAll('[data-mode]').forEach((button) => {
             button.addEventListener('click', () => setMode(button.dataset.mode || 'walking'));
         });
 
