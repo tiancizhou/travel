@@ -1341,6 +1341,45 @@
         }
         .waypoint-confirm-cancel:hover { color: #374151; }
 
+        /* ── 点位分析 tooltip ── */
+        .analysis-tooltip {
+            position: fixed;
+            z-index: 9990;
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity 0.15s ease, visibility 0.15s ease;
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.15), 0 1px 4px rgba(0,0,0,0.06);
+            border: 1px solid rgba(0,0,0,0.05);
+            padding: 12px 14px;
+            max-width: 280px;
+        }
+        .analysis-tooltip.visible {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+        }
+        /* tooltip 内卡片无折叠限制，完整展示 */
+        .analysis-tooltip .marker-analysis-body {
+            max-height: none !important;
+            overflow: visible !important;
+        }
+        .analysis-tooltip .marker-expand-btn {
+            display: none !important;
+        }
+        .analysis-tooltip .marker-analysis {
+            max-height: none;
+            overflow: visible;
+        }
+        /* tooltip 内删除按钮精简 */
+        .analysis-tooltip .marker-action-row {
+            margin-top: 8px;
+            padding-top: 6px;
+            border-top: 1px solid rgba(0,0,0,0.06);
+        }
+
         .error-banner {
             background: #fef2f2;
             border: 1px solid #fecaca;
@@ -1951,6 +1990,9 @@
     <button class="waypoint-confirm-cancel" id="waypointConfirmCancel" type="button">取消</button>
 </div>
 
+<!-- 点位分析 hover tooltip -->
+<div class="analysis-tooltip" id="analysisTooltip"></div>
+
 <script>
     window._AMapSecurityConfig = {
         securityJsCode: '5693981707d9c610301a59a62fdc2f62',
@@ -1966,7 +2008,7 @@
     let currentMode = 'walking';
     let searchMarkers = [];
     let pointAnalysisCache = {};
-    let hoverPreviewTimer = null;
+    let hoverPreviewTimer = null;  // kept for backward compat
     const searchState = {
         start: { timer: null, requestId: 0, selectedName: '' },
         end: { timer: null, requestId: 0, selectedName: '' },
@@ -2045,6 +2087,7 @@
         loadConfig();
         bootstrapLocation();
         initSheetHeight();
+        initTooltipAutoHide();
     }
 
     function bindEvents() {
@@ -2359,38 +2402,11 @@
             }
         }
         clearRouteLine();
-        if (infoWindow) {
-            infoWindow.close();
-        }
+        hideAnalysisTooltip();
         showToast('已删除该点');
     }
 
-    function bindInfoWindowActions(cacheKey) {
-        const button = document.querySelector(`[data-delete-cache-key="${CSS.escape(cacheKey)}"]`);
-        if (button) {
-            button.addEventListener('click', () => deletePointByCacheKey(cacheKey));
-        }
-        // 展开/收起分析内容
-        const expandBtn = document.querySelector('.marker-expand-btn');
-        const body = document.querySelector('.marker-analysis-body');
-        if (expandBtn && body) {
-            // 内容不够长则隐藏按钮
-            if (body.scrollHeight <= 80) {
-                body.classList.add('no-overflow');
-            }
-            expandBtn.addEventListener('click', function () {
-                const expanded = body.classList.toggle('expanded');
-                expandBtn.textContent = expanded ? '收起' : '展开全文';
-            });
-        }
-    }
-
-    function bindInfoWindowRetry(point, label) {
-        const btn = document.querySelector('.marker-retry-btn');
-        if (btn) {
-            btn.addEventListener('click', () => analyzePoint(point, label));
-        }
-    }
+    // bindInfoWindowActions / bindInfoWindowRetry 已被 tooltip 方案取代
 
     function setMode(mode) {
         currentMode = mode;
@@ -2880,50 +2896,103 @@
     }
 
     function bindMarkerAnalysis(marker, point, label) {
-        marker.on('mouseover', () => {
-            if (hoverPreviewTimer) {
-                clearTimeout(hoverPreviewTimer);
-            }
-            hoverPreviewTimer = setTimeout(() => {
-                if (!infoWindow) {
-                    infoWindow = new AMap.InfoWindow({ offset: new AMap.Pixel(0, -24) });
-                }
-                infoWindow.setContent(renderMarkerPreview(point, label));
-                infoWindow.open(map, [point.lng, point.lat]);
-            }, 180);
-        });
-        marker.on('mouseout', () => {
-            if (hoverPreviewTimer) {
-                clearTimeout(hoverPreviewTimer);
-                hoverPreviewTimer = null;
-            }
-        });
+        // ── click：未分析→触发分析；已分析→toggle tooltip ──
         marker.on('click', async () => {
-            if (hoverPreviewTimer) {
-                clearTimeout(hoverPreviewTimer);
-                hoverPreviewTimer = null;
+            const cacheKey = getPointCacheKey(point);
+            const tooltip = document.getElementById('analysisTooltip');
+
+            // 已有缓存：toggle tooltip
+            if (pointAnalysisCache[cacheKey]) {
+                if (tooltip.classList.contains('visible') && tooltip.dataset.key === cacheKey) {
+                    hideAnalysisTooltip();
+                } else {
+                    showAnalysisTooltip(marker, point, pointAnalysisCache[cacheKey], cacheKey);
+                }
+                return;
             }
-            await analyzePoint(point, label);
+
+            // 未分析：触发分析
+            await analyzePoint(marker, point, label);
         });
     }
 
-    async function analyzePoint(point, label) {
-        const cacheKey = getPointCacheKey(point);
-        if (pointAnalysisCache[cacheKey]) {
-            if (!infoWindow) {
-                infoWindow = new AMap.InfoWindow({ offset: new AMap.Pixel(0, -24) });
-            }
-            infoWindow.setContent(renderMarkerAnalysis(pointAnalysisCache[cacheKey], cacheKey));
-            infoWindow.open(map, [point.lng, point.lat]);
-            bindInfoWindowActions(cacheKey);
-            return;
+    // ── tooltip 显示/隐藏 ─────────────────────────────────────────────────
+
+    function showAnalysisTooltip(marker, point, data, cacheKey) {
+        const tooltip = document.getElementById('analysisTooltip');
+        tooltip.innerHTML = renderMarkerAnalysis(data, cacheKey);
+        tooltip.dataset.key = cacheKey;
+        tooltip.classList.add('visible');
+        positionTooltip(marker);
+        // 绑定 tooltip 内按钮
+        bindTooltipActions(cacheKey);
+    }
+
+    function hideAnalysisTooltip() {
+        const tooltip = document.getElementById('analysisTooltip');
+        tooltip.classList.remove('visible');
+    }
+
+    function positionTooltip(marker) {
+        const tooltip = document.getElementById('analysisTooltip');
+        const mapEl = document.getElementById('map');
+        const mapRect = mapEl.getBoundingClientRect();
+        const pos = marker.getPosition();
+        const pixel = map.lngLatToContainer(pos);
+
+        // 先临时显示以获取尺寸
+        tooltip.style.visibility = 'hidden';
+        tooltip.style.display = 'block';
+        const tw = tooltip.offsetWidth;
+        const th = tooltip.offsetHeight;
+
+        // 定位在标记上方，居中
+        let left = mapRect.left + pixel.getX() - tw / 2;
+        let top  = mapRect.top  + pixel.getY() - th - 18;
+
+        // 边界钳制
+        left = Math.max(8, Math.min(left, window.innerWidth  - tw - 8));
+        top  = Math.max(8, top);
+        // 如果上方空间不够，放到下方
+        if (top < mapRect.top + 8) {
+            top = mapRect.top + pixel.getY() + 24;
         }
 
-        if (!infoWindow) {
-            infoWindow = new AMap.InfoWindow({ offset: new AMap.Pixel(0, -24) });
+        tooltip.style.left = left + 'px';
+        tooltip.style.top  = top  + 'px';
+        tooltip.style.visibility = '';
+    }
+
+    function bindTooltipActions(cacheKey) {
+        const tooltip = document.getElementById('analysisTooltip');
+        // 删除按钮
+        const delBtn = tooltip.querySelector('[data-delete-cache-key]');
+        if (delBtn) {
+            delBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                hideAnalysisTooltip();
+                deletePointByCacheKey(cacheKey);
+            });
         }
-        infoWindow.setContent('<div class="marker-preview"><div class="marker-preview-title">正在分析</div><div class="marker-loading"><div class="marker-loading-spinner"></div><span class="marker-loading-text marker-loading-dots">AI 分析中，请稍候</span></div></div>');
-        infoWindow.open(map, [point.lng, point.lat]);
+    }
+
+    // 地图移动/缩放时关闭 tooltip
+    function initTooltipAutoHide() {
+        map.on('movestart', hideAnalysisTooltip);
+        map.on('zoomstart', hideAnalysisTooltip);
+    }
+
+    async function analyzePoint(marker, point, label) {
+        const cacheKey = getPointCacheKey(point);
+
+        // 标记正在分析状态
+        const origLabel = marker.getLabel && marker.getLabel();
+        const origContent = origLabel && origLabel.content ? origLabel.content : '';
+        if (marker.setLabel) {
+            marker.setLabel({ content: origContent + '⏳', direction: 'top' });
+        }
+        showToast('正在分析点位...');
+
         try {
             const resp = await fetch('/api/analyze-point', {
                 method: 'POST',
@@ -2951,21 +3020,18 @@
                     markMarkerAnalyzed(waypointMarkers[index]);
                 }
             });
-            infoWindow.setContent(renderMarkerAnalysis(payload, cacheKey));
-            infoWindow.open(map, [point.lng, point.lat]);
-            bindInfoWindowActions(cacheKey);
+            showToast('分析完成，悬停标记查看结果');
+            // 分析完成后立即显示 tooltip
+            showAnalysisTooltip(marker, point, payload, cacheKey);
         } catch (err) {
-            infoWindow.setContent(`
-                <div class="marker-analysis">
-                    <div class="marker-analysis-title">点位分析失败</div>
-                    <p>${escapeHtml(err.message || '请求失败')}</p>
-                    <div class="marker-action-row">
-                        <button class="marker-retry-btn" type="button">重新生成</button>
-                    </div>
-                </div>
-            `);
-            infoWindow.open(map, [point.lng, point.lat]);
-            bindInfoWindowRetry(point, label);
+            showToast('分析失败：' + (err.message || '请求失败'));
+        } finally {
+            // 恢复标记 label（移除 ⏳）
+            if (marker.setLabel) {
+                const cur = marker.getLabel && marker.getLabel();
+                const txt = cur && cur.content ? cur.content.replace('⏳', '') : origContent;
+                marker.setLabel({ content: txt, direction: 'top' });
+            }
         }
     }
 
